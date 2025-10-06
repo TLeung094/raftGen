@@ -1,0 +1,61 @@
+name: RaftGen
+version: 1.0.0
+main: me.tleung.raftGen.RaftGen
+api-version: "1.19"
+description: 木筏生成插件
+author: tleung
+website: https://example.com
+depend: []
+softdepend: []
+commands:
+  raft:
+    description: 木筏插件主指令
+    usage: /raft <create|home|reset|delete|info|help>
+    permission: raftgen.use
+    permission-message: 你沒有權限使用此指令
+permissions:
+  raftgen.use:
+    description: 使用木筏插件的基本權限
+    default: true
+  raftgen.create:
+    description: 創建木筏的權限
+    default: true
+  raftgen.home:
+    description: 傳送到木筏的權限
+    default: true
+  raftgen.reset:
+    description: 重置木筏的權限
+    default: true
+  raftgen.delete.self:
+    description: 刪除自己木筏的權限
+    default: true
+  raftgen.delete.others:
+    description: 刪除其他玩家木筏的權限
+    default: op
+  raftgen.info:
+    description: 查看木筏資訊的權限
+    default: true
+  raftgen.team:
+    description: 使用團隊功能的權限
+    default: true
+  raftgen.team.create:
+    description: 創建隊伍的權限
+    default: true
+  raftgen.team.invite:
+    description: 邀請玩家的權限
+    default: true
+  raftgen.team.kick:
+    description: 踢出隊員的權限
+    default: true
+  raftgen.team.disband:
+    description: 解散隊伍的權限
+    default: true
+  raftgen.level.calculate:
+    description: 計算等級的權限
+    default: true
+  raftgen.level.stats:
+    description: 查看統計的權限
+    default: true
+  raftgen.admin:
+    description: 管理員權限
+    default: op

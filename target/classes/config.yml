@@ -1,0 +1,247 @@
+# RaftGen 木筏插件配置文件
+# 版本: 1.0.0
+
+# 木筏設置
+raft:
+  # 木筏世界名稱
+  world-name: "raft_world"
+  # 是否啟用獨立世界 (true: 獨立世界, false: 使用主世界)
+  enable-separate-world: true
+  # 確保世界生成在溫暖區域的設置
+  warm-biome-only: true
+  # 木筏間距 (每個木筏之間的距離)
+  spacing: 200
+  # 木筏半徑 (木筏的大小)
+  radius: 5
+  # 木筏基礎高度 (傳送點高度)
+  base-height: 80
+  # 海平面高度
+  sea-level: 62
+  # 世界環境 (NORMAL, NETHER, THE_END)
+  environment: "NORMAL"
+  # 是否生成結構 (村莊、神廟等)
+  generate-structures: false
+  # 是否生成怪物
+  spawn-monsters: false
+
+# 木筏細節設置
+raft-details:
+  # 是否啟用植物生成
+  enable-plants: false
+  # 是否啟用額外樹木
+  enable-extra-trees: false
+  # 是否啟用路徑
+  enable-paths: false
+  # 是否啟用隱藏寶箱
+  enable-hidden-chests: false
+  # 是否啟用裝飾
+  enable-decorations: false
+
+# 團隊設置
+team:
+  # 邀請過期時間 (秒)
+  invite-expire-time: 60
+  # 最大隊伍人數 (0 = 無限制)
+  max-team-size: 0
+  # 是否允許跨世界傳送
+  allow-cross-world-teleport: true
+  # 隊伍聊天前綴
+  chat-prefix: "&6[隊伍] &f"
+
+# 傳送設置
+teleport:
+  # 傳送冷卻時間 (秒)
+  cooldown: 10
+  # 傳送延遲 (秒)
+  delay: 3
+  # 是否在傳送時顯示粒子效果
+  show-particles: true
+  # 是否在傳送時播放音效
+  play-sounds: true
+
+# 重置設置
+reset:
+  # 重置冷卻時間 (秒)
+  cooldown: 300
+  # 重置確認時間 (秒)
+  confirm-time: 30
+  # 重置時是否保留物品
+  keep-inventory: false
+  # 重置時是否保留經驗
+  keep-experience: false
+
+# 刪除設置
+delete:
+  # 刪除確認時間 (秒)
+  confirm-time: 30
+  # 刪除後冷卻時間 (秒)
+  cooldown: 60
+  # 是否發送刪除警告
+  send-warnings: true
+
+# 世界生成器設置
+world-generator:
+  # 海底基礎高度
+  sea-bed-height: 30
+  # 海底最低高度
+  min-sea-bed-height: 25
+  # 海底最高高度
+  max-sea-bed-height: 35
+  # 木筏邊緣高度
+  raft-edge-height: 65
+  # 木筏中心高度
+  raft-center-height: 70
+  # 地形噪聲頻率
+  noise-frequency: 0.1
+  # 地形噪聲幅度
+  noise-amplitude: 2.0
+
+# 消息設置
+messages:
+  # 是否啟用彩色消息
+  enable-colors: true
+  # 消息前綴
+  prefix: "&6[RaftGen] &f"
+  # 成功消息顏色
+  success-color: "&a"
+  # 錯誤消息顏色
+  error-color: "&c"
+  # 信息消息顏色
+  info-color: "&e"
+  # 警告消息顏色
+  warning-color: "&6"
+
+# 數據庫設置 (未來功能)
+database:
+  # 數據庫類型 (SQLite, MySQL)
+  type: "SQLite"
+  # SQLite 文件名
+  sqlite-file: "rafts.db"
+  # MySQL 設置
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "raftgen"
+    username: "username"
+    password: "password"
+    table-prefix: "raftgen_"
+
+# 性能設置
+performance:
+  # 自動清理間隔 (分鐘)
+  cleanup-interval: 10
+  # 最大日誌文件大小 (MB)
+  max-log-size: 10
+  # 是否啟用異步加載
+  async-loading: true
+  # 區塊預加載範圍
+  chunk-preload-range: 1
+
+# 更新檢查
+update-check:
+  # 是否啟用更新檢查
+  enabled: true
+  # 檢查間隔 (小時)
+  interval: 24
+  # 是否下載自動更新
+  auto-download: false
+
+# 調試設置
+debug:
+  # 是否啟用調試模式
+  enabled: false
+  # 詳細日誌級別
+  verbose-logging: false
+  # 性能監控
+  performance-monitoring: false
+
+# 語言設置
+language:
+  # 語言文件
+  # 支持: zh_TW (繁體中文), en_US (英文)
+  locale: "zh_TW"
+  # 是否啟用自動語言檢測
+  auto-detect: true
+
+# 保護設置
+protection:
+  # 是否啟用木筏保護
+  enabled: true
+  # 保護半徑 (格)
+  radius: 10
+  # 是否防止PVP
+  prevent-pvp: true
+  # 是否防止怪物生成
+  prevent-monster-spawn: true
+  # 是否防止爆炸破壞
+  prevent-explosion: true
+  # 允許的方塊破壞
+  allowed-break-blocks:
+    - "CHEST"
+    - "FURNACE"
+    - "CRAFTING_TABLE"
+  # 允許的方塊放置
+  allowed-place-blocks:
+    - "CHEST"
+    - "FURNACE"
+    - "CRAFTING_TABLE"
+    - "TORCH"
+
+# 經濟系統設置 (需要Vault)
+economy:
+  # 是否啟用經濟系統
+  enabled: false
+  # 創建木筏費用
+  create-cost: 100.0
+  # 重置木筏費用
+  reset-cost: 50.0
+  # 傳送費用
+  teleport-cost: 10.0
+  # 刪除退款比例 (0.0 - 1.0)
+  delete-refund: 0.5
+
+# 進階設置 (僅供進階用戶修改)
+advanced:
+  # 木筏生成算法
+  generation-algorithm: "SIMPLEX"
+  # 地形種子 (0 = 隨機)
+  terrain-seed: 0
+  # 是否啟用自定義生物群系
+  custom-biomes: false
+  # 木筏材料
+  raft-material: "OAK_PLANKS"
+  # 是否啟用自定義木筏形狀
+  custom-raft-shape: false
+
+# 插件集成
+integrations:
+  # WorldGuard 集成
+  worldguard:
+    enabled: false
+    auto-create-regions: true
+    region-prefix: "raft_"
+  # PlaceholderAPI 集成
+  placeholderapi:
+    enabled: false
+  # Vault 集成
+  vault:
+    enabled: false
+  # Multiverse-Core 集成
+  multiverse:
+    enabled: false
+
+# 備份設置
+backup:
+  # 是否啟用自動備份
+  enabled: false
+  # 備份間隔 (小時)
+  interval: 24
+  # 保留備份天數
+  keep-days: 7
+  # 備份路徑
+  path: "plugins/RaftGen/backups"
+
+
+# 版本信息 (請勿修改)
+version: 1.0.0
+config-version: 1
