@@ -273,14 +273,21 @@ public class TeamManager {
         return playerTeams.containsKey(playerId);
     }
 
+    /**
+     * 獲取團隊數量 (API使用)
+     */
+    public int getTeamCount() {
+        return teamMembers.size();
+    }
+
+    /**
+     * 清理過期邀請
+     */
     public void cleanupExpiredInvites() {
         teamInvites.entrySet().removeIf(entry -> {
             UUID playerId = entry.getKey();
             Player player = Bukkit.getPlayer(playerId);
-            if (player == null || !player.isOnline()) {
-                return true;
-            }
-            return false;
+            return player == null || !player.isOnline();
         });
     }
 }

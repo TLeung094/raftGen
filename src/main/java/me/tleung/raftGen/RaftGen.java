@@ -1,5 +1,7 @@
 package me.tleung.raftGen;
 
+import me.tleung.raftGen.api.RaftGenAPI;
+import me.tleung.raftGen.api.RaftGenAPIImpl;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -16,10 +18,15 @@ import java.util.Objects;
 
 public class RaftGen extends JavaPlugin implements Listener {
 
+    private static RaftGen instance;
+    private RaftGenAPI api;
     private RaftManager raftManager;
 
     @Override
     public void onEnable() {
+        instance = this;
+        this.api = new RaftGenAPIImpl(this);
+
         saveDefaultConfig();
         this.raftManager = new RaftManager(this);
         Objects.requireNonNull(getCommand("raft")).setExecutor(this);
@@ -28,11 +35,38 @@ public class RaftGen extends JavaPlugin implements Listener {
         raftManager.startAutoScanTask();
 
         getLogger().info("§a木筏生成插件已啟用!");
+        getLogger().info("§aRaftGen API 已就緒，版本: " + getDescription().getVersion());
     }
 
     @Override
     public void onDisable() {
+        instance = null;
+        api = null;
         getLogger().info("§c木筏生成插件已停用!");
+    }
+
+    /**
+     * 獲取API實例
+     */
+    public static RaftGenAPI getAPI() {
+        if (instance == null) {
+            throw new IllegalStateException("RaftGen插件未啟用!");
+        }
+        return instance.api;
+    }
+
+    /**
+     * 檢查API是否可用
+     */
+    public static boolean isAPIEnabled() {
+        return instance != null && instance.api != null;
+    }
+
+    /**
+     * 獲取插件實例
+     */
+    public static RaftGen getInstance() {
+        return instance;
     }
 
     @Override
@@ -102,12 +136,16 @@ public class RaftGen extends JavaPlugin implements Listener {
                 case "status":
                     handleStatusCommand(sender);
                     break;
+                case "api":
+                    handleAPICommand(sender);
+                    break;
                 default:
                     sender.sendMessage("§c未知指令! 使用 §a/raft help §c查看可用指令");
             }
         } catch (Exception e) {
             sender.sendMessage("§c執行指令時發生錯誤: " + e.getMessage());
             getLogger().warning("執行指令時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return true;
@@ -234,6 +272,7 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a版本: §e" + version);
         sender.sendMessage("§a作者: §e" + authors);
         sender.sendMessage("§a描述: §e" + getDescription().getDescription());
+        sender.sendMessage("§aAPI狀態: §e" + (isAPIEnabled() ? "已啟用" : "未啟用"));
     }
 
     private void handleTeamCommand(CommandSender sender, String[] args) {
@@ -342,6 +381,22 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage(getPluginStatus());
     }
 
+    private void handleAPICommand(CommandSender sender) {
+        if (!sender.hasPermission("raftgen.admin")) {
+            sender.sendMessage("§c你沒有權限使用此指令!");
+            return;
+        }
+        sender.sendMessage("§6=== RaftGen API 資訊 ===");
+        sender.sendMessage("§aAPI狀態: §e" + (isAPIEnabled() ? "已啟用" : "未啟用"));
+        sender.sendMessage("§a插件版本: §e" + getDescription().getVersion());
+        sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
+        sender.sendMessage("§a可用事件:");
+        sender.sendMessage("  §7- RaftCreateEvent");
+        sender.sendMessage("  §7- RaftLevelUpEvent");
+        sender.sendMessage("  §7- RaftDeleteEvent");
+        sender.sendMessage("§a其他插件可通過 RaftGen.getAPI() 訪問API");
+    }
+
     private void sendHelpMessage(Player player) {
         player.sendMessage("§6=== 木筏插件 ===");
         player.sendMessage("§a/raft create §7- 創建一個新木筏");
@@ -361,6 +416,7 @@ public class RaftGen extends JavaPlugin implements Listener {
             player.sendMessage("§c/raft reloadworld §7- 重新載入木筏世界");
             player.sendMessage("§a/raft status §7- 查看插件狀態");
             player.sendMessage("§a/raft version §7- 顯示插件版本資訊");
+            player.sendMessage("§a/raft api §7- 顯示API資訊");
         }
     }
 
@@ -384,6 +440,7 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a/raft reloadworld §7- 重新載入木筏世界");
         sender.sendMessage("§a/raft status §7- 查看插件狀態");
         sender.sendMessage("§a/raft version §7- 顯示插件版本資訊");
+        sender.sendMessage("§a/raft api §7- 顯示API資訊");
     }
 
     @EventHandler
@@ -406,10 +463,12 @@ public class RaftGen extends JavaPlugin implements Listener {
         status.append("§6=== 插件狀態 ===\n");
         status.append("§a版本: §e").append(getDescription().getVersion()).append("\n");
         status.append("§a狀態: §e運行中\n");
+        status.append("§aAPI狀態: §e").append(isAPIEnabled() ? "已啟用" : "未啟用").append("\n");
         if (raftManager != null) {
             World raftWorld = raftManager.getRaftWorld();
             status.append("§a木筏世界: §e").append(raftWorld != null ? raftWorld.getName() : "未載入").append("\n");
             status.append("§a木筏數量: §e").append(raftManager.getRaftCount()).append("\n");
+            status.append("§a團隊數量: §e").append(raftManager.getTeamManager().getTeamCount()).append("\n");
         }
         return status.toString();
     }
