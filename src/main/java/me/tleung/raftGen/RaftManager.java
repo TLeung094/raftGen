@@ -1,5 +1,9 @@
 package me.tleung.raftGen;
 
+// 添加這些導入
+import java.util.Map;
+import java.util.HashMap;
+
 import me.tleung.raftGen.event.RaftCreateEvent;
 import me.tleung.raftGen.event.RaftDeleteEvent;
 import me.tleung.raftGen.event.RaftLevelUpEvent;
@@ -10,7 +14,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.HashMap;
 import java.util.Random;
 import java.util.UUID;
 import java.util.Set;
@@ -1306,5 +1309,51 @@ public class RaftManager {
             return true;
         }
         return false;
+    }
+
+    // === API 支持方法 ===
+
+    /**
+     * 獲取所有木筏數據 (API使用)
+     */
+    public Map<UUID, Location> getAllRafts() {
+        return new HashMap<>(playerRafts);
+    }
+
+    /**
+     * 獲取木筏名稱 (API使用)
+     */
+    public String getRaftName(UUID playerId) {
+        return raftNames.getOrDefault(playerId, "未知木筏");
+    }
+
+    /**
+     * 設置木筏名稱 (API使用)
+     */
+    public void setRaftName(UUID playerId, String name) {
+        if (playerRafts.containsKey(playerId)) {
+            raftNames.put(playerId, name);
+        }
+    }
+
+    /**
+     * 獲取木筏價值 (API使用)
+     */
+    public double getRaftValue(UUID playerId) {
+        return raftValues.getOrDefault(playerId, 0.0);
+    }
+
+    /**
+     * 獲取木筏等級映射 (API使用)
+     */
+    public Map<UUID, Integer> getAllRaftLevels() {
+        return new HashMap<>(raftLevels);
+    }
+
+    /**
+     * 獲取木筏名稱映射 (API使用)
+     */
+    public Map<UUID, String> getAllRaftNames() {
+        return new HashMap<>(raftNames);
     }
 }

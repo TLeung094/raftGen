@@ -127,4 +127,33 @@ public class LevelCalculator {
     public double getValueForLevel(int level) {
         return Math.exp(level / 2.5);
     }
+
+    /**
+     * 設置方塊價值 (API使用)
+     */
+    public void setBlockValue(Material material, double value) {
+        blockValues.put(material, value);
+    }
+
+    /**
+     * 獲取所有方塊價值映射 (API使用)
+     */
+    public Map<Material, Double> getAllBlockValues() {
+        return new HashMap<>(blockValues);
+    }
+
+    /**
+     * 清除所有方塊價值並重新設置默認值 (API使用)
+     */
+    public void resetBlockValues() {
+        blockValues.clear();
+        setupDefaultBlockValues();
+    }
+
+    /**
+     * 批量設置方塊價值 (API使用)
+     */
+    public void setBlockValues(Map<Material, Double> values) {
+        blockValues.putAll(values);
+    }
 }
