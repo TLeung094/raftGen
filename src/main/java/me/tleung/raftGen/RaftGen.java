@@ -25,21 +25,36 @@ public class RaftGen extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         instance = this;
-        this.api = new RaftGenAPIImpl(this);
 
         saveDefaultConfig();
         this.raftManager = new RaftManager(this);
+
+        // 先初始化 raftManager，再創建 API
+        this.api = new RaftGenAPIImpl(this);
+
+        // 先加載數據，再註冊其他功能
+        raftManager.loadSavedData();
+
         Objects.requireNonNull(getCommand("raft")).setExecutor(this);
         getServer().getPluginManager().registerEvents(this, this);
         raftManager.startCleanupTask();
         raftManager.startAutoScanTask();
+        raftManager.startAutoSave(); // 啟動自動保存
 
         getLogger().info("§a木筏生成插件已啟用!");
+        getLogger().info("§a加載了 " + raftManager.getRaftCount() + " 個木筏數據");
+        getLogger().info("§a團隊數量: " + raftManager.getTeamManager().getTeamCount());
         getLogger().info("§aRaftGen API 已就緒，版本: " + getDescription().getVersion());
     }
 
     @Override
     public void onDisable() {
+        // 插件禁用時保存數據
+        if (raftManager != null) {
+            raftManager.saveData();
+            getLogger().info("§a木筏數據已保存");
+        }
+
         instance = null;
         api = null;
         getLogger().info("§c木筏生成插件已停用!");
@@ -138,6 +153,12 @@ public class RaftGen extends JavaPlugin implements Listener {
                     break;
                 case "api":
                     handleAPICommand(sender);
+                    break;
+                case "save":
+                    handleSaveCommand(sender);
+                    break;
+                case "reload":
+                    handleReloadCommand(sender);
                     break;
                 default:
                     sender.sendMessage("§c未知指令! 使用 §a/raft help §c查看可用指令");
@@ -273,6 +294,8 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a作者: §e" + authors);
         sender.sendMessage("§a描述: §e" + getDescription().getDescription());
         sender.sendMessage("§aAPI狀態: §e" + (isAPIEnabled() ? "已啟用" : "未啟用"));
+        sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
+        sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
     }
 
     private void handleTeamCommand(CommandSender sender, String[] args) {
@@ -286,10 +309,12 @@ public class RaftGen extends JavaPlugin implements Listener {
             return;
         }
         TeamManager teamManager = raftManager.getTeamManager();
+
         if (args.length == 1) {
             teamManager.showTeamInfo(player);
             return;
         }
+
         String subCommand = args[1].toLowerCase();
         switch (subCommand) {
             case "create":
@@ -339,6 +364,17 @@ public class RaftGen extends JavaPlugin implements Listener {
                 break;
             case "info":
                 teamManager.showTeamInfo(player);
+                break;
+            case "transfer":
+                if (!player.hasPermission("raftgen.team.transfer")) {
+                    player.sendMessage("§c你沒有權限轉移隊長權限!");
+                    return;
+                }
+                if (args.length < 3) {
+                    player.sendMessage("§c用法: /raft team transfer <玩家名稱>");
+                    return;
+                }
+                teamManager.transferLeadership(player, args[2]);
                 break;
             default:
                 player.sendMessage("§c未知的團隊指令!");
@@ -390,11 +426,45 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§aAPI狀態: §e" + (isAPIEnabled() ? "已啟用" : "未啟用"));
         sender.sendMessage("§a插件版本: §e" + getDescription().getVersion());
         sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
+        sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
         sender.sendMessage("§a可用事件:");
         sender.sendMessage("  §7- RaftCreateEvent");
         sender.sendMessage("  §7- RaftLevelUpEvent");
         sender.sendMessage("  §7- RaftDeleteEvent");
         sender.sendMessage("§a其他插件可通過 RaftGen.getAPI() 訪問API");
+    }
+
+    private void handleSaveCommand(CommandSender sender) {
+        if (!sender.hasPermission("raftgen.admin")) {
+            sender.sendMessage("§c你沒有權限使用此指令!");
+            return;
+        }
+
+        raftManager.saveData();
+        sender.sendMessage("§a木筏數據已手動保存!");
+        getLogger().info("管理員手動保存了木筏數據");
+    }
+
+    private void handleReloadCommand(CommandSender sender) {
+        if (!sender.hasPermission("raftgen.admin")) {
+            sender.sendMessage("§c你沒有權限使用此指令!");
+            return;
+        }
+
+        // 先保存當前數據
+        raftManager.saveData();
+
+        // 重新加載配置
+        reloadConfig();
+
+        // 重新加載數據
+        raftManager.loadSavedData();
+
+        sender.sendMessage("§a插件配置和數據已重新載入!");
+        sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
+        sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
+
+        getLogger().info("插件配置和數據已重新載入");
     }
 
     private void sendHelpMessage(Player player) {
@@ -417,6 +487,8 @@ public class RaftGen extends JavaPlugin implements Listener {
             player.sendMessage("§a/raft status §7- 查看插件狀態");
             player.sendMessage("§a/raft version §7- 顯示插件版本資訊");
             player.sendMessage("§a/raft api §7- 顯示API資訊");
+            player.sendMessage("§a/raft save §7- 手動保存數據");
+            player.sendMessage("§a/raft reload §7- 重新載入配置和數據");
         }
     }
 
@@ -431,6 +503,10 @@ public class RaftGen extends JavaPlugin implements Listener {
         player.sendMessage("§b/raft team kick <玩家> §7- 踢出隊員");
         player.sendMessage("§b/raft team disband §7- 解散隊伍");
         player.sendMessage("§b/raft team info §7- 隊伍資訊");
+
+        if (player.hasPermission("raftgen.team.transfer")) {
+            player.sendMessage("§b/raft team transfer <玩家> §7- 轉移隊長權限");
+        }
     }
 
     private void sendConsoleHelpMessage(CommandSender sender) {
@@ -441,11 +517,14 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a/raft status §7- 查看插件狀態");
         sender.sendMessage("§a/raft version §7- 顯示插件版本資訊");
         sender.sendMessage("§a/raft api §7- 顯示API資訊");
+        sender.sendMessage("§a/raft save §7- 手動保存數據");
+        sender.sendMessage("§a/raft reload §7- 重新載入配置和數據");
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         // 預留方塊放置事件處理
+        // 可以在這裡添加木筏區域的方塊放置限制
     }
 
     @Override
@@ -464,12 +543,23 @@ public class RaftGen extends JavaPlugin implements Listener {
         status.append("§a版本: §e").append(getDescription().getVersion()).append("\n");
         status.append("§a狀態: §e運行中\n");
         status.append("§aAPI狀態: §e").append(isAPIEnabled() ? "已啟用" : "未啟用").append("\n");
+
         if (raftManager != null) {
             World raftWorld = raftManager.getRaftWorld();
             status.append("§a木筏世界: §e").append(raftWorld != null ? raftWorld.getName() : "未載入").append("\n");
             status.append("§a木筏數量: §e").append(raftManager.getRaftCount()).append("\n");
             status.append("§a團隊數量: §e").append(raftManager.getTeamManager().getTeamCount()).append("\n");
+            status.append("§a自動掃描: §e").append(raftManager.isAutoScanEnabled() ? "啟用" : "停用").append("\n");
+
+            // 添加配置信息
+            status.append("§a木筏間距: §e").append(getConfig().getInt("raft.spacing", 200)).append(" 格\n");
+            status.append("§a掃描間隔: §e").append(getConfig().getInt("level.auto-scan-interval", 10)).append(" 分鐘\n");
         }
+
+        // 添加數據持久化狀態
+        status.append("§a數據持久化: §e已啟用\n");
+        status.append("§a自動保存: §e每5分鐘\n");
+
         return status.toString();
     }
 
@@ -478,5 +568,73 @@ public class RaftGen extends JavaPlugin implements Listener {
             return raftManager.getRaftCount();
         }
         return 0;
+    }
+
+    /**
+     * 獲取團隊數量
+     */
+    public int getTeamCount() {
+        if (raftManager != null) {
+            return raftManager.getTeamManager().getTeamCount();
+        }
+        return 0;
+    }
+
+    /**
+     * 手動觸發數據保存（用於測試或緊急情況）
+     */
+    public void manualSave() {
+        if (raftManager != null) {
+            raftManager.saveData();
+            getLogger().info("手動觸發數據保存完成");
+        }
+    }
+
+    /**
+     * 重新加載所有數據
+     */
+    public void reloadAllData() {
+        if (raftManager != null) {
+            // 先保存當前數據
+            raftManager.saveData();
+
+            // 重新加載配置
+            reloadConfig();
+
+            // 重新加載數據
+            raftManager.loadSavedData();
+
+            getLogger().info("所有數據已重新載入");
+        }
+    }
+
+    /**
+     * 檢查插件健康狀態
+     */
+    public boolean isHealthy() {
+        return instance != null &&
+                raftManager != null &&
+                api != null &&
+                Bukkit.getScheduler().isQueued(raftManager.hashCode());
+    }
+
+    /**
+     * 獲取插件診斷信息
+     */
+    public String getDiagnostics() {
+        StringBuilder diag = new StringBuilder();
+        diag.append("§6=== 插件診斷 ===\n");
+        diag.append("§a實例狀態: §e").append(instance != null ? "正常" : "異常").append("\n");
+        diag.append("§aAPI狀態: §e").append(api != null ? "正常" : "異常").append("\n");
+        diag.append("§a管理器狀態: §e").append(raftManager != null ? "正常" : "異常").append("\n");
+
+        if (raftManager != null) {
+            diag.append("§a木筏世界: §e").append(raftManager.getRaftWorld() != null ? "已載入" : "未載入").append("\n");
+            diag.append("§a數據完整性: §e").append(raftManager.getRaftCount() >= 0 ? "正常" : "異常").append("\n");
+        }
+
+        diag.append("§a調度器狀態: §e").append(Bukkit.getScheduler().isQueued(raftManager.hashCode()) ? "運行中" : "停止").append("\n");
+
+        return diag.toString();
     }
 }

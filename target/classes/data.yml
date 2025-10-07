@@ -1,0 +1,22 @@
+# 木筏插件數據文件
+# 此文件由插件自動生成和管理，請勿手動修改
+
+rafts:
+# 示例數據結構:
+# player-uuid-here:
+#   location:
+#     world: raft_world
+#     x: 0.0
+#     y: 62.0
+#     z: 0.0
+#   level: 1
+#   name: "玩家的木筏"
+#   value: 0.0
+#   lastScan: 1633600000000
+
+teams:
+# 團隊數據結構:
+# leader-uuid-here:
+#   members:
+#     - member-uuid-1
+#     - member-uuid-2

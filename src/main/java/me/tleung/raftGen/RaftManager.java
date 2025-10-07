@@ -1,9 +1,5 @@
 package me.tleung.raftGen;
 
-// 添加這些導入
-import java.util.Map;
-import java.util.HashMap;
-
 import me.tleung.raftGen.event.RaftCreateEvent;
 import me.tleung.raftGen.event.RaftDeleteEvent;
 import me.tleung.raftGen.event.RaftLevelUpEvent;
@@ -14,6 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.Set;
@@ -28,6 +26,7 @@ public class RaftManager {
     private World raftWorld;
     private final Random random;
     private final TeamManager teamManager;
+    private final DataManager dataManager;
 
     private final LevelCalculator levelCalculator;
     private final HashMap<UUID, Double> raftValues;
@@ -43,6 +42,7 @@ public class RaftManager {
         this.raftWorld = null;
         this.random = new Random();
         this.teamManager = new TeamManager(plugin);
+        this.dataManager = new DataManager(plugin);
 
         this.levelCalculator = new LevelCalculator();
         this.raftValues = new HashMap<>();
@@ -226,6 +226,9 @@ public class RaftManager {
                 player.spawnParticle(Particle.HEART, player.getLocation(), 10);
 
                 plugin.getLogger().info("為玩家 " + player.getName() + " 生成木筏於: " + finalRaftLocation.getBlockX() + ", " + finalRaftLocation.getBlockZ());
+
+                // 創建木筏後保存數據
+                saveData();
             }
         }.runTask(plugin);
 
@@ -460,6 +463,9 @@ public class RaftManager {
                 }
 
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
+
+                // 重置後保存數據
+                saveData();
             }
         }.runTask(plugin);
     }
@@ -538,6 +544,9 @@ public class RaftManager {
             if (targetPlayer.isOnline()) {
                 targetPlayer.sendMessage("§c你的木筏已被管理員刪除!");
             }
+
+            // 刪除後保存數據
+            saveData();
             return;
         }
 
@@ -691,6 +700,9 @@ public class RaftManager {
                         }
                         player.sendMessage("§6你可以使用 §a/raft create §6來創建一個新的木筏");
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
+
+                        // 刪除後保存數據
+                        saveData();
                     }
                 }.runTaskLater(plugin, 20L); // 等待 1 秒後執行
             }
@@ -711,6 +723,9 @@ public class RaftManager {
                     lastScanTime.remove(playerId);
 
                     sender.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
+
+                    // 刪除後保存數據
+                    saveData();
                     return;
                 }
             }
@@ -739,6 +754,9 @@ public class RaftManager {
         if (targetPlayer.isOnline()) {
             targetPlayer.sendMessage("§c你的木筏已被管理員刪除!");
         }
+
+        // 刪除後保存數據
+        saveData();
     }
 
     /**
@@ -752,6 +770,9 @@ public class RaftManager {
         raftValues.remove(playerId);
         lastScanTime.remove(playerId);
         deleteConfirmations.remove(playerId);
+
+        // 刪除後保存數據
+        saveData();
     }
 
     public void forceClearRaftArea(Player player) {
@@ -778,6 +799,9 @@ public class RaftManager {
                 world.refreshChunk(chunkX, chunkZ);
                 player.sendMessage("§a強制清除完成!");
                 player.sendMessage("§6木筏區域已強制清除並重新載入");
+
+                // 清除後保存數據
+                saveData();
             }
         }.runTask(plugin);
     }
@@ -1081,6 +1105,9 @@ public class RaftManager {
             }
         }
         plugin.getLogger().info("自動掃描完成: 掃描 " + scannedCount + " 個木筏");
+
+        // 自動掃描後保存數據
+        saveData();
     }
 
     private void updateRaftLevel(Player player, boolean isAutoScan) {
@@ -1118,6 +1145,9 @@ public class RaftManager {
             if (!isAutoScan || newLevel > oldLevel) {
                 sendLevelUpdateMessage(player, totalValue, newLevel, oldLevel);
             }
+
+            // 等級更新後保存數據
+            saveData();
         });
     }
 
@@ -1272,6 +1302,126 @@ public class RaftManager {
         }
     }
 
+    // === 數據持久化方法 ===
+
+    /**
+     * 加載保存的數據
+     */
+    public void loadSavedData() {
+        DataManager.RaftData raftData = dataManager.loadAllData();
+
+        this.playerRafts.putAll(raftData.playerRafts);
+        this.raftLevels.putAll(raftData.raftLevels);
+        this.raftNames.putAll(raftData.raftNames);
+        this.raftValues.putAll(raftData.raftValues);
+        this.lastScanTime.putAll(raftData.lastScanTime);
+
+        // 加載團隊數據到 TeamManager
+        teamManager.loadTeamData(raftData.teamMembers);
+    }
+
+    /**
+     * 保存當前數據
+     */
+    public void saveData() {
+        dataManager.saveAllData(playerRafts, raftLevels, raftNames, raftValues, lastScanTime, teamManager);
+    }
+
+    /**
+     * 啟動自動保存
+     */
+    public void startAutoSave() {
+        dataManager.startAutoSave();
+    }
+
+    // === API 支持方法 ===
+
+    /**
+     * 獲取所有木筏數據 (API使用)
+     */
+    public Map<UUID, Location> getAllRafts() {
+        return new HashMap<>(playerRafts);
+    }
+
+    /**
+     * 獲取木筏名稱 (API使用)
+     */
+    public String getRaftName(UUID playerId) {
+        return raftNames.getOrDefault(playerId, "未知木筏");
+    }
+
+    /**
+     * 設置木筏名稱 (API使用)
+     */
+    public void setRaftName(UUID playerId, String name) {
+        if (playerRafts.containsKey(playerId)) {
+            raftNames.put(playerId, name);
+            saveData(); // 設置名稱後保存數據
+        }
+    }
+
+    /**
+     * 獲取木筏價值 (API使用)
+     */
+    public double getRaftValue(UUID playerId) {
+        return raftValues.getOrDefault(playerId, 0.0);
+    }
+
+    /**
+     * 獲取木筏等級映射 (API使用)
+     */
+    public Map<UUID, Integer> getAllRaftLevels() {
+        return new HashMap<>(raftLevels);
+    }
+
+    /**
+     * 獲取木筏名稱映射 (API使用)
+     */
+    public Map<UUID, String> getAllRaftNames() {
+        return new HashMap<>(raftNames);
+    }
+
+    /**
+     * 獲取木筏價值映射 (API使用)
+     */
+    public Map<UUID, Double> getAllRaftValues() {
+        return new HashMap<>(raftValues);
+    }
+
+    /**
+     * 獲取最後掃描時間映射 (API使用)
+     */
+    public Map<UUID, Long> getAllLastScanTimes() {
+        return new HashMap<>(lastScanTime);
+    }
+
+    // === 缺失的方法修復 ===
+
+    /**
+     * 檢查自動掃描是否啟用 (API使用)
+     */
+    public boolean isAutoScanEnabled() {
+        return autoScanEnabled;
+    }
+
+    /**
+     * 設置自動掃描狀態 (API使用)
+     */
+    public void setAutoScanEnabled(boolean enabled) {
+        this.autoScanEnabled = enabled;
+        plugin.getConfig().set("level.auto-scan-enabled", enabled);
+        plugin.saveConfig();
+    }
+
+    /**
+     * 獲取木筏管理器實例 (用於診斷)
+     */
+    public RaftManager getRaftManager() {
+        return this;
+    }
+
+    // === 基本Getter方法 ===
+
     public World getRaftWorld() {
         return raftWorld;
     }
@@ -1299,6 +1449,7 @@ public class RaftManager {
     public void setPlayerRaftLevel(UUID playerId, int level) {
         if (playerRafts.containsKey(playerId)) {
             raftLevels.put(playerId, level);
+            saveData(); // 設置等級後保存數據
         }
     }
 
@@ -1306,54 +1457,9 @@ public class RaftManager {
         if (playerRafts.containsKey(playerId)) {
             int currentLevel = raftLevels.get(playerId);
             raftLevels.put(playerId, currentLevel + 1);
+            saveData(); // 升級後保存數據
             return true;
         }
         return false;
-    }
-
-    // === API 支持方法 ===
-
-    /**
-     * 獲取所有木筏數據 (API使用)
-     */
-    public Map<UUID, Location> getAllRafts() {
-        return new HashMap<>(playerRafts);
-    }
-
-    /**
-     * 獲取木筏名稱 (API使用)
-     */
-    public String getRaftName(UUID playerId) {
-        return raftNames.getOrDefault(playerId, "未知木筏");
-    }
-
-    /**
-     * 設置木筏名稱 (API使用)
-     */
-    public void setRaftName(UUID playerId, String name) {
-        if (playerRafts.containsKey(playerId)) {
-            raftNames.put(playerId, name);
-        }
-    }
-
-    /**
-     * 獲取木筏價值 (API使用)
-     */
-    public double getRaftValue(UUID playerId) {
-        return raftValues.getOrDefault(playerId, 0.0);
-    }
-
-    /**
-     * 獲取木筏等級映射 (API使用)
-     */
-    public Map<UUID, Integer> getAllRaftLevels() {
-        return new HashMap<>(raftLevels);
-    }
-
-    /**
-     * 獲取木筏名稱映射 (API使用)
-     */
-    public Map<UUID, String> getAllRaftNames() {
-        return new HashMap<>(raftNames);
     }
 }
