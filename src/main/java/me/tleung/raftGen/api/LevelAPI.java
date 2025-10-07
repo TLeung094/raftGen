@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
 import java.util.UUID;
 
 public interface LevelAPI {
@@ -56,7 +57,7 @@ public interface LevelAPI {
      * @return 方塊價值映射
      */
     @NotNull
-    java.util.Map<Material, Double> getAllBlockValues();
+    Map<Material, Double> getAllBlockValues();
 
     /**
      * 獲取升級進度百分比
@@ -71,4 +72,42 @@ public interface LevelAPI {
      * @return 還需要的價值
      */
     double getValueNeededForNextLevel(@NotNull UUID playerId);
+
+    /**
+     * 批量設置方塊價值
+     * @param values 方塊價值映射
+     */
+    void setBlockValues(@NotNull Map<Material, Double> values);
+
+    /**
+     * 重置所有方塊價值為默認值
+     */
+    void resetBlockValues();
+
+    /**
+     * 獲取等級上限
+     * @return 等級上限
+     */
+    int getMaxLevel();
+
+    /**
+     * 設置等級上限
+     * @param maxLevel 等級上限
+     */
+    void setMaxLevel(int maxLevel);
+
+    /**
+     * 獲取等級對應的半徑
+     * @param level 等級
+     * @return 半徑
+     */
+    int getRadiusForLevel(int level);
+
+    /**
+     * 獲取等級進度條
+     * @param playerId 玩家UUID
+     * @return 進度條字符串
+     */
+    @NotNull
+    String getProgressBar(@NotNull UUID playerId);
 }

@@ -165,4 +165,47 @@ public interface RaftGenAPI {
      */
     @NotNull
     LevelAPI getLevelAPI();
+
+    /**
+     * 獲取插件狀態信息
+     * @return 狀態信息
+     */
+    @NotNull
+    String getPluginStatus();
+
+    /**
+     * 檢查玩家是否在木筏世界中
+     * @param player 玩家
+     * @return 是否在木筏世界
+     */
+    boolean isInRaftWorld(@NotNull Player player);
+
+    /**
+     * 獲取玩家的團隊隊長（如果有的話）
+     * @param playerId 玩家UUID
+     * @return 隊長UUID，如果沒有團隊返回null
+     */
+    @Nullable
+    UUID getPlayerTeamLeader(@NotNull UUID playerId);
+
+    /**
+     * 檢查玩家是否是團隊隊長
+     * @param playerId 玩家UUID
+     * @return 是否是隊長
+     */
+    boolean isTeamLeader(@NotNull UUID playerId);
+
+    /**
+     * 獲取木筏等級映射
+     * @return 等級映射
+     */
+    @NotNull
+    Map<UUID, Integer> getAllRaftLevels();
+
+    /**
+     * 獲取木筏名稱映射
+     * @return 名稱映射
+     */
+    @NotNull
+    Map<UUID, String> getAllRaftNames();
 }

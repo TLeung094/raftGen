@@ -1,26 +1,36 @@
 package me.tleung.raftGen.api;
 
+import me.tleung.raftGen.LevelCalculator;
 import me.tleung.raftGen.RaftGen;
 import me.tleung.raftGen.RaftManager;
+import me.tleung.raftGen.TeamManager;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.bukkit.Material;
-import java.util.Set;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class RaftGenAPIImpl implements RaftGenAPI {
     private final RaftGen plugin;
     private final RaftManager raftManager;
+    private final TeamManager teamManager;
+    private final LevelCalculator levelCalculator;
+    private final TeamAPIImpl teamAPI;
+    private final LevelAPIImpl levelAPI;
 
     public RaftGenAPIImpl(@NotNull RaftGen plugin) {
         this.plugin = plugin;
         this.raftManager = plugin.getRaftManager();
+        this.teamManager = raftManager.getTeamManager();
+        this.levelCalculator = new LevelCalculator();
+        this.teamAPI = new TeamAPIImpl();
+        this.levelAPI = new LevelAPIImpl();
     }
 
     @NotNull
@@ -162,68 +172,252 @@ public class RaftGenAPIImpl implements RaftGenAPI {
     @NotNull
     @Override
     public TeamAPI getTeamAPI() {
-        // 返回一個基本的實現
-        return new BasicTeamAPI();
+        return teamAPI;
     }
 
     @NotNull
     @Override
     public LevelAPI getLevelAPI() {
-        // 返回一個基本的實現
-        return new BasicLevelAPI();
+        return levelAPI;
     }
 
-    // 基本的 TeamAPI 實現
-    private class BasicTeamAPI implements TeamAPI {
-        @Override
-        public boolean createTeam(Player leader) { return false; }
-        @Override
-        public boolean disbandTeam(Player leader) { return false; }
-        @Override
-        public boolean invitePlayer(Player leader, String targetName) { return false; }
-        @Override
-        public boolean acceptInvite(Player player) { return false; }
-        @Override
-        public boolean denyInvite(Player player) { return false; }
-        @Override
-        public boolean leaveTeam(Player player) { return false; }
-        @Override
-        public boolean kickPlayer(Player leader, String targetName) { return false; }
-        @Override
-        public UUID getPlayerTeamLeader(UUID playerId) { return null; }
-        @Override
-        public Set<UUID> getTeamMembers(UUID leaderId) { return Set.of(); }
-        @Override
-        public boolean isTeamLeader(UUID playerId) { return false; }
-        @Override
-        public boolean isInTeam(UUID playerId) { return false; }
-        @Override
-        public void broadcastToTeam(UUID leaderId, String message) {}
-        @Override
-        public int getTeamCount() { return 0; }
-        @Override
-        public String getTeamInfo(Player player) { return "團隊功能暫不可用"; }
+    @NotNull
+    @Override
+    public String getPluginStatus() {
+        return plugin.getPluginStatus();
     }
 
-    // 基本的 LevelAPI 實現
-    private class BasicLevelAPI implements LevelAPI {
+    @Override
+    public boolean isInRaftWorld(@NotNull Player player) {
+        return player.getWorld().equals(getRaftWorld());
+    }
+
+    @Nullable
+    @Override
+    public UUID getPlayerTeamLeader(@NotNull UUID playerId) {
+        return teamManager.getPlayerTeamLeader(playerId);
+    }
+
+    @Override
+    public boolean isTeamLeader(@NotNull UUID playerId) {
+        return teamManager.isTeamLeader(playerId);
+    }
+
+    @NotNull
+    @Override
+    public Map<UUID, Integer> getAllRaftLevels() {
+        return raftManager.getAllRaftLevels();
+    }
+
+    @NotNull
+    @Override
+    public Map<UUID, String> getAllRaftNames() {
+        return raftManager.getAllRaftNames();
+    }
+
+    // TeamAPI 實現類
+    private class TeamAPIImpl implements TeamAPI {
         @Override
-        public double calculateValue(Location location, int radius) { return 0; }
+        public boolean createTeam(@NotNull Player leader) {
+            return teamManager.createTeam(leader);
+        }
+
         @Override
-        public int calculateLevel(double totalValue) { return 1; }
+        public boolean disbandTeam(@NotNull Player leader) {
+            return teamManager.disbandTeam(leader);
+        }
+
         @Override
-        public double getValueForNextLevel(int currentLevel) { return 0; }
+        public boolean invitePlayer(@NotNull Player leader, @NotNull String targetName) {
+            return teamManager.invitePlayer(leader, targetName);
+        }
+
         @Override
-        public double getValueForLevel(int level) { return 0; }
+        public boolean acceptInvite(@NotNull Player player) {
+            return teamManager.acceptInvite(player);
+        }
+
         @Override
-        public double getBlockValue(Material material) { return 0; }
+        public boolean denyInvite(@NotNull Player player) {
+            return teamManager.denyInvite(player);
+        }
+
         @Override
-        public void setBlockValue(Material material, double value) {}
+        public boolean leaveTeam(@NotNull Player player) {
+            return teamManager.leaveTeam(player);
+        }
+
         @Override
-        public Map<Material, Double> getAllBlockValues() { return Map.of(); }
+        public boolean kickPlayer(@NotNull Player leader, @NotNull String targetName) {
+            return teamManager.kickPlayer(leader, targetName);
+        }
+
+        @Nullable
         @Override
-        public double getLevelProgress(UUID playerId) { return 0; }
+        public UUID getPlayerTeamLeader(@NotNull UUID playerId) {
+            return teamManager.getPlayerTeamLeader(playerId);
+        }
+
+        @NotNull
         @Override
-        public double getValueNeededForNextLevel(UUID playerId) { return 0; }
+        public Set<UUID> getTeamMembers(@NotNull UUID leaderId) {
+            return teamManager.getTeamMembers(leaderId);
+        }
+
+        @Override
+        public boolean isTeamLeader(@NotNull UUID playerId) {
+            return teamManager.isTeamLeader(playerId);
+        }
+
+        @Override
+        public boolean isInTeam(@NotNull UUID playerId) {
+            return teamManager.isInTeam(playerId);
+        }
+
+        @Override
+        public void broadcastToTeam(@NotNull UUID leaderId, @NotNull String message) {
+            teamManager.broadcastToTeam(leaderId, message);
+        }
+
+        @Override
+        public int getTeamCount() {
+            return teamManager.getTeamCount();
+        }
+
+        @NotNull
+        @Override
+        public String getTeamInfo(@NotNull Player player) {
+            teamManager.showTeamInfo(player);
+            return "團隊信息已發送給玩家";
+        }
+
+        @Override
+        public int getTeamMemberCount(@NotNull UUID leaderId) {
+            return teamManager.getTeamMembers(leaderId).size();
+        }
+
+        @Override
+        public boolean hasPendingInvite(@NotNull UUID playerId) {
+            // 需要在 TeamManager 中添加此方法
+            // 暫時返回 false
+            return false;
+        }
+
+        @Nullable
+        @Override
+        public UUID getInviteLeader(@NotNull UUID playerId) {
+            // 需要在 TeamManager 中添加此方法
+            // 暫時返回 null
+            return null;
+        }
+
+        @Override
+        public boolean cancelInvite(@NotNull UUID playerId) {
+            // 需要在 TeamManager 中添加此方法
+            // 暫時返回 false
+            return false;
+        }
+    }
+
+    // LevelAPI 實現類
+    private class LevelAPIImpl implements LevelAPI {
+        @Override
+        public double calculateValue(@NotNull Location location, int radius) {
+            return levelCalculator.calculateRaftValue(location, radius);
+        }
+
+        @Override
+        public int calculateLevel(double totalValue) {
+            return levelCalculator.calculateLevel(totalValue);
+        }
+
+        @Override
+        public double getValueForNextLevel(int currentLevel) {
+            return levelCalculator.getValueForNextLevel(currentLevel);
+        }
+
+        @Override
+        public double getValueForLevel(int level) {
+            return levelCalculator.getValueForLevel(level);
+        }
+
+        @Override
+        public double getBlockValue(@NotNull Material material) {
+            return levelCalculator.getBlockValue(material);
+        }
+
+        @Override
+        public void setBlockValue(@NotNull Material material, double value) {
+            levelCalculator.setBlockValue(material, value);
+        }
+
+        @NotNull
+        @Override
+        public Map<Material, Double> getAllBlockValues() {
+            return levelCalculator.getAllBlockValues();
+        }
+
+        @Override
+        public double getLevelProgress(@NotNull UUID playerId) {
+            double currentValue = getRaftValue(playerId);
+            int currentLevel = getRaftLevel(playerId);
+            double nextLevelValue = getValueForNextLevel(currentLevel);
+
+            if (nextLevelValue <= 0) return 100.0;
+            double progress = (currentValue / nextLevelValue) * 100;
+            return Math.min(progress, 100.0);
+        }
+
+        @Override
+        public double getValueNeededForNextLevel(@NotNull UUID playerId) {
+            double currentValue = getRaftValue(playerId);
+            int currentLevel = getRaftLevel(playerId);
+            double nextLevelValue = getValueForNextLevel(currentLevel);
+            return Math.max(0, nextLevelValue - currentValue);
+        }
+
+        @Override
+        public void setBlockValues(@NotNull Map<Material, Double> values) {
+            levelCalculator.setBlockValues(values);
+        }
+
+        @Override
+        public void resetBlockValues() {
+            levelCalculator.resetBlockValues();
+        }
+
+        @Override
+        public int getMaxLevel() {
+            // 暫時返回固定值
+            return 20;
+        }
+
+        @Override
+        public void setMaxLevel(int maxLevel) {
+            // 需要在 LevelCalculator 中添加此方法
+        }
+
+        @Override
+        public int getRadiusForLevel(int level) {
+            return 1 + (level / 5);
+        }
+
+        @NotNull
+        @Override
+        public String getProgressBar(@NotNull UUID playerId) {
+            double progress = getLevelProgress(playerId);
+            int bars = (int) (progress / 5);
+
+            StringBuilder bar = new StringBuilder("§a[");
+            for (int i = 0; i < 20; i++) {
+                if (i < bars) {
+                    bar.append("█");
+                } else {
+                    bar.append("§7█");
+                }
+            }
+            bar.append("§a] §e").append(String.format("%.1f", progress)).append("%");
+            return bar.toString();
+        }
     }
 }

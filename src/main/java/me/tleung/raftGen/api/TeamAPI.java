@@ -110,4 +110,33 @@ public interface TeamAPI {
      */
     @NotNull
     String getTeamInfo(@NotNull Player player);
+
+    /**
+     * 獲取團隊成員數量
+     * @param leaderId 隊長UUID
+     * @return 成員數量
+     */
+    int getTeamMemberCount(@NotNull UUID leaderId);
+
+    /**
+     * 檢查團隊邀請是否存在
+     * @param playerId 玩家UUID
+     * @return 是否存在邀請
+     */
+    boolean hasPendingInvite(@NotNull UUID playerId);
+
+    /**
+     * 獲取邀請的隊長
+     * @param playerId 玩家UUID
+     * @return 隊長UUID，如果沒有邀請返回null
+     */
+    @Nullable
+    UUID getInviteLeader(@NotNull UUID playerId);
+
+    /**
+     * 取消團隊邀請
+     * @param playerId 玩家UUID
+     * @return 是否成功取消
+     */
+    boolean cancelInvite(@NotNull UUID playerId);
 }
