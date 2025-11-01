@@ -23,8 +23,8 @@ public class RaftChunkGenerator extends ChunkGenerator {
         this.plugin = plugin;
     }
 
-    // 檢查是否在木筏範圍內
-    private boolean isInRaftArea(int worldX, int worldZ) {
+    // 檢查是否在木筏範圍內 - 保留此方法供RaftManager使用
+    public boolean isInRaftArea(int worldX, int worldZ) {
         int spacing = 200;
         int size = 3;
 
@@ -40,8 +40,8 @@ public class RaftChunkGenerator extends ChunkGenerator {
         return false;
     }
 
-    // 獲取木筏中心位置
-    private int[] getNearestRaftCenter(int worldX, int worldZ) {
+    // 獲取木筏中心位置 - 保留此方法供RaftManager使用
+    public int[] getNearestRaftCenter(int worldX, int worldZ) {
         int spacing = 200;
         int minDistance = Integer.MAX_VALUE;
         int[] nearestCenter = new int[]{0, 0};
@@ -106,7 +106,7 @@ public class RaftChunkGenerator extends ChunkGenerator {
         return nx0 + fadeZ * (nx1 - nx0);
     }
 
-    // 平滑的分形布朗运动
+    // 平滑的分形布朗运动 - 降低octaves数量减少极端值
     private double getSmoothFBM(int x, int z, double frequency, int octaves, double lacunarity, double gain, long seed) {
         double value = 0.0;
         double amplitude = 1.0;
@@ -124,69 +124,69 @@ public class RaftChunkGenerator extends ChunkGenerator {
         return Math.max(-1.0, Math.min(1.0, value / maxAmplitude));
     }
 
-    // 超平滑的大陆噪声 - 使用非常低的频率和高的octaves
+    // 超平滑的大陆噪声 - 降低振幅和octaves数量
     private double getSmoothContinentNoise(int x, int z, long seed) {
         // 使用非常低的频率创造平滑的大陆级别变化
-        double continent1 = getSmoothFBM(x, z, 0.00002, 12, 1.8, 0.7, seed + 10000) * 50;
-        double continent2 = getSmoothFBM(x, z, 0.00005, 8, 2.0, 0.6, seed + 11000) * 30;
-        double continent3 = getSmoothFBM(x, z, 0.0001, 6, 2.2, 0.5, seed + 12000) * 20;
+        double continent1 = getSmoothFBM(x, z, 0.00002, 8, 1.8, 0.7, seed + 10000) * 30; // 从50降低到30
+        double continent2 = getSmoothFBM(x, z, 0.00005, 6, 2.0, 0.6, seed + 11000) * 20; // 从30降低到20
+        double continent3 = getSmoothFBM(x, z, 0.0001, 4, 2.2, 0.5, seed + 12000) * 10; // 从20降低到10
 
         return (continent1 + continent2 + continent3) / 3.0;
     }
 
-    // 平滑的区域基础高度
+    // 平滑的区域基础高度 - 限制高度范围
     private int getSmoothRegionalBaseHeight(int x, int z, long seed) {
         double continentNoise = getSmoothContinentNoise(x, z, seed);
 
         // 使用平滑的映射函数
-        double normalizedNoise = (continentNoise + 50) / 100.0; // 映射到 0-1
+        double normalizedNoise = (continentNoise + 30) / 60.0; // 调整映射范围
         normalizedNoise = Math.max(0.0, Math.min(1.0, normalizedNoise));
 
         // 使用平滑曲线映射到高度范围
         double heightFactor = normalizedNoise * normalizedNoise; // 平方曲线创造更自然的分布
-        int baseHeight = 10 + (int)(heightFactor * 40); // 10-50的范围
+        int baseHeight = 15 + (int)(heightFactor * 25); // 15-40的范围，更加平坦
 
         return baseHeight;
     }
 
-    // 平滑的局部地形噪声
+    // 平滑的局部地形噪声 - 降低振幅
     private double getSmoothLocalTerrainNoise(int x, int z, long seed) {
         // 使用中等频率创造平滑的局部地形
-        double terrain1 = getSmoothFBM(x, z, 0.0005, 8, 1.9, 0.65, seed + 20000) * 25;
-        double terrain2 = getSmoothFBM(x, z, 0.001, 6, 2.1, 0.6, seed + 21000) * 15;
-        double terrain3 = getSmoothFBM(x, z, 0.002, 4, 2.3, 0.55, seed + 22000) * 10;
+        double terrain1 = getSmoothFBM(x, z, 0.0005, 6, 1.9, 0.65, seed + 20000) * 15; // 从25降低到15
+        double terrain2 = getSmoothFBM(x, z, 0.001, 4, 2.1, 0.6, seed + 21000) * 10; // 从15降低到10
+        double terrain3 = getSmoothFBM(x, z, 0.002, 3, 2.3, 0.55, seed + 22000) * 5; // 从10降低到5
 
         return (terrain1 + terrain2 + terrain3) / 3.0;
     }
 
-    // 平滑的细节噪声
+    // 平滑的细节噪声 - 降低振幅
     private double getSmoothDetailNoise(int x, int z, long seed) {
         // 使用较高频率添加平滑细节
-        double detail1 = getSmoothFBM(x, z, 0.01, 4, 2.0, 0.5, seed + 30000) * 6;
-        double detail2 = getSmoothFBM(x, z, 0.02, 3, 2.2, 0.6, seed + 31000) * 4;
-        double detail3 = getSmoothFBM(x, z, 0.05, 2, 2.5, 0.7, seed + 32000) * 2;
+        double detail1 = getSmoothFBM(x, z, 0.01, 3, 2.0, 0.5, seed + 30000) * 3; // 从6降低到3
+        double detail2 = getSmoothFBM(x, z, 0.02, 2, 2.2, 0.6, seed + 31000) * 2; // 从4降低到2
+        double detail3 = getSmoothFBM(x, z, 0.05, 1, 2.5, 0.7, seed + 32000) * 1; // 从2降低到1
 
         return (detail1 + detail2 + detail3) / 3.0;
     }
 
-    // 平滑的山脉噪声
+    // 平滑的山脉噪声 - 大幅降低振幅
     private double getSmoothMountainNoise(int x, int z, long seed) {
-        double mountain = getSmoothFBM(x, z, 0.001, 6, 2.0, 0.6, seed + 40000) * 20;
+        double mountain = getSmoothFBM(x, z, 0.001, 4, 2.0, 0.6, seed + 40000) * 10; // 从20降低到10
         // 使用平滑的山脊函数
-        double ridge = 1.0 - Math.abs(getSmoothFBM(x, z, 0.002, 5, 2.1, 0.55, seed + 41000)) * 15;
-        return Math.max(mountain, ridge) * 0.7; // 降低强度
+        double ridge = 1.0 - Math.abs(getSmoothFBM(x, z, 0.002, 3, 2.1, 0.55, seed + 41000)) * 8; // 从15降低到8
+        return Math.max(mountain, ridge) * 0.5; // 降低强度
     }
 
-    // 平滑的峡谷噪声
+    // 平滑的峡谷噪声 - 大幅降低振幅
     private double getSmoothCanyonNoise(int x, int z, long seed) {
-        double canyon = getSmoothFBM(x, z, 0.0008, 5, 2.0, 0.6, seed + 50000) * 15;
+        double canyon = getSmoothFBM(x, z, 0.0008, 3, 2.0, 0.6, seed + 50000) * 8; // 从15降低到8
         // 使用平滑的绝对值函数
-        return -Math.abs(canyon) * 1.2; // 降低强度
+        return -Math.abs(canyon) * 0.8; // 降低强度
     }
 
     // 平滑的地形选择器
     private double getSmoothTerrainSelector(int x, int z, long seed) {
-        return getSmoothFBM(x, z, 0.0003, 6, 2.0, 0.6, seed + 60000);
+        return getSmoothFBM(x, z, 0.0003, 4, 2.0, 0.6, seed + 60000);
     }
 
     @Override
@@ -199,13 +199,8 @@ public class RaftChunkGenerator extends ChunkGenerator {
                 int worldX = chunkX * 16 + x;
                 int worldZ = chunkZ * 16 + z;
 
-                boolean isRaft = isInRaftArea(worldX, worldZ);
-
-                if (isRaft) {
-                    generateRaftAtLocation(chunkData, x, z, worldX, worldZ, seaLevel, random);
-                } else {
-                    generateSmoothOceanTerrain(chunkData, x, z, worldX, worldZ, seaLevel, random, worldSeed);
-                }
+                // 移除木筏区域检查，只生成海洋地形
+                generateSmoothOceanTerrain(chunkData, x, z, worldX, worldZ, seaLevel, random, worldSeed);
             }
         }
     }
@@ -219,10 +214,8 @@ public class RaftChunkGenerator extends ChunkGenerator {
                 int worldX = chunkX * 16 + x;
                 int worldZ = chunkZ * 16 + z;
 
-                if (!isInRaftArea(worldX, worldZ)) {
-                    generateSeaBedDetails(chunkData, x, z, worldX, worldZ, random, worldSeed);
-                    generateSmoothOceanFeatures(chunkData, x, z, worldX, worldZ, random, worldSeed);
-                }
+                generateSeaBedDetails(chunkData, x, z, worldX, worldZ, random, worldSeed);
+                generateSmoothOceanFeatures(chunkData, x, z, worldX, worldZ, random, worldSeed);
             }
         }
     }
@@ -247,61 +240,7 @@ public class RaftChunkGenerator extends ChunkGenerator {
         // 完全移除洞穴生成
     }
 
-    private void generateRaftAtLocation(ChunkData chunkData, int x, int z, int worldX, int worldZ, int seaLevel, Random random) {
-        generateRaftTerrain(chunkData, x, z, worldX, worldZ, seaLevel, random);
-    }
-
-    private void generateRaftTerrain(ChunkData chunkData, int x, int z, int worldX, int worldZ, int seaLevel, Random random) {
-        int[] raftCenter = getNearestRaftCenter(worldX, worldZ);
-        int centerX = raftCenter[0];
-        int centerZ = raftCenter[1];
-
-        int relX = worldX - centerX;
-        int relZ = worldZ - centerZ;
-
-        int raftHeight = 62;
-        int seaBedHeight = 30;
-
-        // 基岩
-        chunkData.setBlock(x, 0, z, Material.BEDROCK);
-        chunkData.setBlock(x, 1, z, Material.BEDROCK);
-
-        // 石頭層
-        for (int y = 2; y < seaBedHeight; y++) {
-            if (y < 10) {
-                chunkData.setBlock(x, y, z, Material.DEEPSLATE);
-            } else {
-                chunkData.setBlock(x, y, z, Material.STONE);
-            }
-        }
-
-        // 沙層
-        chunkData.setBlock(x, seaBedHeight, z, Material.SAND);
-
-        // 水層
-        for (int y = seaBedHeight + 1; y < raftHeight; y++) {
-            chunkData.setBlock(x, y, z, Material.WATER);
-        }
-
-        // 木筏
-        if (Math.abs(relX) <= 1 && Math.abs(relZ) <= 1) {
-            chunkData.setBlock(x, raftHeight, z, Material.OAK_PLANKS);
-        }
-
-        // 空氣
-        for (int y = raftHeight + 1; y < chunkData.getMaxHeight(); y++) {
-            chunkData.setBlock(x, y, z, Material.AIR);
-        }
-
-        // 確保木筏周圍是水
-        for (int y = seaLevel; y < raftHeight; y++) {
-            if (chunkData.getType(x, y, z) == Material.AIR) {
-                chunkData.setBlock(x, y, z, Material.WATER);
-            }
-        }
-    }
-
-    // 平滑的海洋地形生成
+    // 平滑的海洋地形生成 - 添加柱状结构检测和修复
     private void generateSmoothOceanTerrain(ChunkData chunkData, int x, int z, int worldX, int worldZ, int seaLevel, Random random, long worldSeed) {
         // 获取平滑的区域基础高度
         int regionalBaseHeight = getSmoothRegionalBaseHeight(worldX, worldZ, worldSeed);
@@ -322,24 +261,69 @@ public class RaftChunkGenerator extends ChunkGenerator {
         // 使用平滑的混合函数计算最终高度
         double finalHeight;
 
-        // 使用平滑的过渡函数
-        double mountainWeight = smoothStep(Math.max(0, (terrainSelector - 0.2) / 0.6));
-        double canyonWeight = smoothStep(Math.max(0, (-terrainSelector - 0.2) / 0.6));
+        // 使用平滑的过渡函数 - 降低特殊地形的权重
+        double mountainWeight = smoothStep(Math.max(0, (terrainSelector - 0.3) / 0.4)); // 提高阈值
+        double canyonWeight = smoothStep(Math.max(0, (-terrainSelector - 0.3) / 0.4)); // 提高阈值
         double plainWeight = 1.0 - mountainWeight - canyonWeight;
 
+        // 降低特殊地形的影响
         finalHeight = regionalBaseHeight +
-                localTerrain * 0.4 +
-                detail * 0.2 +
-                mountain * mountainWeight * 0.4 +
-                canyon * canyonWeight * 0.4;
+                localTerrain * 0.3 + // 从0.4降低到0.3
+                detail * 0.1 + // 从0.2降低到0.1
+                mountain * mountainWeight * 0.2 + // 从0.4降低到0.2
+                canyon * canyonWeight * 0.2; // 从0.4降低到0.2
 
         int seaBedHeight = (int) finalHeight;
 
-        // 确保高度在合理范围内
-        seaBedHeight = Math.max(-15, Math.min(55, seaBedHeight));
+        // 确保高度在合理范围内 - 更加严格的限制
+        seaBedHeight = Math.max(5, Math.min(45, seaBedHeight)); // 从-15,55调整到5,45
+
+        // 检查并修复可能的柱状结构
+        seaBedHeight = fixPillarStructures(chunkData, x, z, worldX, worldZ, seaBedHeight, seaLevel, random);
 
         // 生成地形层
         generateSmoothTerrainLayers(chunkData, x, z, worldX, worldZ, seaBedHeight, seaLevel, random, worldSeed);
+    }
+
+    // 修复柱状结构的方法
+    private int fixPillarStructures(ChunkData chunkData, int x, int z, int worldX, int worldZ, int seaBedHeight, int seaLevel, Random random) {
+        // 检查周围区块的高度，避免突然的高度变化
+        int smoothedHeight = seaBedHeight;
+
+        // 简单的平滑处理：如果高度与周围差异太大，进行平均
+        int neighborCount = 0;
+        int totalHeight = 0;
+
+        // 检查相邻的虚拟位置（简化版本）
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+
+                // 使用噪声函数估算相邻位置的高度
+                int neighborX = worldX + dx * 4; // 使用更大的步长
+                int neighborZ = worldZ + dz * 4;
+
+                int neighborRegionalHeight = getSmoothRegionalBaseHeight(neighborX, neighborZ, chunkData.getMaxHeight());
+                double neighborLocalTerrain = getSmoothLocalTerrainNoise(neighborX, neighborZ, chunkData.getMaxHeight() + 70000);
+                double neighborDetail = getSmoothDetailNoise(neighborX, neighborZ, chunkData.getMaxHeight() + 80000);
+
+                int estimatedNeighborHeight = neighborRegionalHeight + (int)(neighborLocalTerrain * 0.3) + (int)(neighborDetail * 0.1);
+                estimatedNeighborHeight = Math.max(5, Math.min(45, estimatedNeighborHeight));
+
+                neighborCount++;
+                totalHeight += estimatedNeighborHeight;
+            }
+        }
+
+        if (neighborCount > 0) {
+            int averageHeight = totalHeight / neighborCount;
+            // 如果当前高度与平均高度差异太大，进行平滑处理
+            if (Math.abs(seaBedHeight - averageHeight) > 8) {
+                smoothedHeight = (seaBedHeight + averageHeight) / 2;
+            }
+        }
+
+        return smoothedHeight;
     }
 
     // 平滑的步进函数
@@ -453,7 +437,7 @@ public class RaftChunkGenerator extends ChunkGenerator {
         }
     }
 
-    // 平滑的海洋特徵生成
+    // 平滑的海洋特徵生成 - 降低特征生成概率
     private void generateSmoothOceanFeatures(ChunkData chunkData, int x, int z, int worldX, int worldZ, Random random, long worldSeed) {
         int seaLevel = 62;
 
@@ -472,19 +456,19 @@ public class RaftChunkGenerator extends ChunkGenerator {
         // 使用平滑的噪声决定特征类型
         double featureNoise = getSmoothPerlinNoise(worldX, worldZ, 0.003, worldSeed + 150000);
 
-        // 平滑的特征生成概率
-        if (featureNoise > 0.3 && random.nextDouble() < smoothProbability(featureNoise, 0.3, 0.3)) {
-            // 生成平滑的山脉
-            int mountainHeight = 3 + random.nextInt(12);
+        // 平滑的特征生成概率 - 降低概率
+        if (featureNoise > 0.5 && random.nextDouble() < smoothProbability(featureNoise, 0.5, 0.2)) { // 提高阈值，降低概率
+            // 生成平滑的山脉 - 限制高度
+            int mountainHeight = 2 + random.nextInt(6); // 降低高度范围
             for (int i = 1; i <= mountainHeight; i++) {
                 if (surfaceY + i < seaLevel - 1) {
                     Material material = getSmoothMountainMaterial(surfaceY + i, random);
                     chunkData.setBlock(x, surfaceY + i, z, material);
                 }
             }
-        } else if (featureNoise < -0.3 && random.nextDouble() < smoothProbability(featureNoise, -0.3, 0.25)) {
-            // 生成平滑的峡谷
-            int canyonDepth = 3 + random.nextInt(15);
+        } else if (featureNoise < -0.5 && random.nextDouble() < smoothProbability(featureNoise, -0.5, 0.15)) { // 提高阈值，降低概率
+            // 生成平滑的峡谷 - 限制深度
+            int canyonDepth = 2 + random.nextInt(8); // 降低深度范围
             for (int i = 1; i <= canyonDepth; i++) {
                 if (surfaceY - i >= 5) {
                     chunkData.setBlock(x, surfaceY - i, z, Material.WATER);

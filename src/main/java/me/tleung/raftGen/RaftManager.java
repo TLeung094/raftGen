@@ -10,11 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.Set;
+import java.util.*;
+import java.util.logging.Level;
 
 public class RaftManager {
 
@@ -197,7 +194,8 @@ public class RaftManager {
         new BukkitRunnable() {
             @Override
             public void run() {
-                ensureRaftGenerated(finalRaftLocation);
+                // 生成木筏方块
+                generateRaftBlocks(finalRaftLocation);
 
                 // 直接使用 baseHeight + 1 生成玩家
                 Location spawnLocation = new Location(raftWorld, finalRaftLocation.getX() + 0.5, finalBaseHeight + 1, finalRaftLocation.getZ() + 0.5);
@@ -235,13 +233,98 @@ public class RaftManager {
         return true;
     }
 
+    /**
+     * 生成木筏方块 - 将水方块替换为木筏并清除上方方块
+     */
+    private void generateRaftBlocks(Location center) {
+        World world = center.getWorld();
+        int centerX = center.getBlockX();
+        int centerZ = center.getBlockZ();
+        int baseHeight = 62;
+
+        plugin.getLogger().info("生成木筏方块于位置: " + centerX + ", " + baseHeight + ", " + centerZ);
+
+        // 在中心3x3区域生成木筏
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                int blockX = centerX + x;
+                int blockZ = centerZ + z;
+
+                // 将水方块替换为橡木板
+                Block block = world.getBlockAt(blockX, baseHeight, blockZ);
+                if (block.getType() == Material.WATER || block.getType() == Material.AIR) {
+                    block.setType(Material.OAK_PLANKS);
+                    plugin.getLogger().info("設置木筏方块: " + blockX + ", " + baseHeight + ", " + blockZ);
+                }
+
+                // 清除木筏上方的方块（确保是空气）
+                for (int y = baseHeight + 1; y <= baseHeight + 3; y++) {
+                    Block aboveBlock = world.getBlockAt(blockX, y, blockZ);
+                    if (aboveBlock.getType() != Material.AIR) {
+                        aboveBlock.setType(Material.AIR);
+                    }
+                }
+            }
+        }
+
+        // 强制重新载入区块以确保客户端更新
+        int chunkX = centerX >> 4;
+        int chunkZ = centerZ >> 4;
+        world.refreshChunk(chunkX, chunkZ);
+
+        plugin.getLogger().info("木筏方块生成完成");
+    }
+
+    /**
+     * 删除木筏方块 - 将木筏方块替换为水并清除上方方块
+     */
+    private void removeRaftBlocks(Location center) {
+        World world = center.getWorld();
+        int centerX = center.getBlockX();
+        int centerZ = center.getBlockZ();
+        int baseHeight = 62;
+
+        plugin.getLogger().info("删除木筏方块于位置: " + centerX + ", " + baseHeight + ", " + centerZ);
+
+        // 在中心3x3区域删除木筏
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                int blockX = centerX + x;
+                int blockZ = centerZ + z;
+
+                // 将木筏方块替换为水
+                Block block = world.getBlockAt(blockX, baseHeight, blockZ);
+                if (block.getType() == Material.OAK_PLANKS) {
+                    block.setType(Material.WATER);
+                    plugin.getLogger().info("移除木筏方块: " + blockX + ", " + baseHeight + ", " + blockZ);
+                }
+
+                // 清除木筏上方的方块
+                for (int y = baseHeight + 1; y <= baseHeight + 3; y++) {
+                    Block aboveBlock = world.getBlockAt(blockX, y, blockZ);
+                    if (aboveBlock.getType() != Material.WATER && aboveBlock.getType() != Material.AIR) {
+                        aboveBlock.setType(Material.AIR);
+                    }
+                }
+            }
+        }
+
+        // 强制重新载入区块以确保客户端更新
+        int chunkX = centerX >> 4;
+        int chunkZ = centerZ >> 4;
+        world.refreshChunk(chunkX, chunkZ);
+
+        plugin.getLogger().info("木筏方块删除完成");
+    }
+
     private void preGenerateRaftArea(Location center) {
         World world = center.getWorld();
         int centerX = center.getBlockX();
         int centerZ = center.getBlockZ();
 
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
+        // 在更大的範圍內預生成區塊 (5x5區域)
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
                 int chunkX = (centerX + x) >> 4;
                 int chunkZ = (centerZ + z) >> 4;
                 if (!world.isChunkLoaded(chunkX, chunkZ)) {
@@ -257,14 +340,25 @@ public class RaftManager {
         int centerZ = center.getBlockZ();
         int baseHeight = 62;
 
+        // 检查木筏是否已经存在
+        boolean raftExists = false;
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
                 Block block = world.getBlockAt(centerX + x, baseHeight, centerZ + z);
-                if (block.getType() != Material.OAK_PLANKS) {
-                    block.setType(Material.OAK_PLANKS);
-                    plugin.getLogger().info("強制生成木筏方塊: " + (centerX + x) + ", " + baseHeight + ", " + (centerZ + z));
+                if (block.getType() == Material.OAK_PLANKS) {
+                    raftExists = true;
+                    break;
                 }
             }
+            if (raftExists) break;
+        }
+
+        // 如果木筏不存在，重新生成
+        if (!raftExists) {
+            plugin.getLogger().info("木筏不存在，重新生成木筏方块");
+            generateRaftBlocks(center);
+        } else {
+            plugin.getLogger().info("木筏已存在，无需重新生成");
         }
     }
 
@@ -289,11 +383,13 @@ public class RaftManager {
 
     private void safeTeleport(Player player, Location location) {
         player.setFallDistance(0f);
-        Location safeLocation = findSafeTeleportLocation(location);
+        Location safeLocation = ensureSafeRaftLocation(location);
+
         giveTemporaryFallProtection(player);
         player.teleport(safeLocation);
         player.sendMessage("§a安全傳送完成!");
 
+        // 二次檢查，確保玩家站在安全位置
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -304,15 +400,73 @@ public class RaftManager {
                         currentLoc.getBlockZ()
                 );
 
-                if (!belowBlock.getType().isSolid()) {
-                    Location adjustedLoc = findSafeLocation(currentLoc);
+                // 如果下方不是木筏，調整位置
+                if (belowBlock.getType() != Material.OAK_PLANKS) {
+                    Location adjustedLoc = findSafeRaftLocation(currentLoc);
                     player.teleport(adjustedLoc);
                     player.setFallDistance(0f);
-                    player.sendMessage("§e位置已調整至安全區域");
+                    player.sendMessage("§e位置已調整至安全木筏區域");
                 }
                 player.setFallDistance(0f);
             }
         }.runTaskLater(plugin, 5L);
+    }
+
+    /**
+     * 確保木筏位置安全
+     */
+    private Location ensureSafeRaftLocation(Location targetLocation) {
+        World world = targetLocation.getWorld();
+        int x = targetLocation.getBlockX();
+        int z = targetLocation.getBlockZ();
+
+        // 在木筏中心3x3區域內尋找安全位置
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                int checkX = x + dx;
+                int checkZ = z + dz;
+
+                Block standBlock = world.getBlockAt(checkX, 62, checkZ);
+                Block feetBlock = world.getBlockAt(checkX, 63, checkZ);
+                Block headBlock = world.getBlockAt(checkX, 64, checkZ);
+
+                // 檢查是否在木筏上且有足夠的空間
+                if (standBlock.getType() == Material.OAK_PLANKS &&
+                        feetBlock.getType() == Material.AIR &&
+                        headBlock.getType() == Material.AIR) {
+                    return new Location(world, checkX + 0.5, 63, checkZ + 0.5, targetLocation.getYaw(), targetLocation.getPitch());
+                }
+            }
+        }
+
+        // 如果沒有找到理想位置，強制生成木筏並返回中心
+        world.getBlockAt(x, 62, z).setType(Material.OAK_PLANKS);
+        world.getBlockAt(x, 63, z).setType(Material.AIR);
+        world.getBlockAt(x, 64, z).setType(Material.AIR);
+
+        return new Location(world, x + 0.5, 63, z + 0.5, targetLocation.getYaw(), targetLocation.getPitch());
+    }
+
+    /**
+     * 尋找安全木筏位置
+     */
+    private Location findSafeRaftLocation(Location currentLoc) {
+        World world = currentLoc.getWorld();
+        int x = currentLoc.getBlockX();
+        int z = currentLoc.getBlockZ();
+
+        // 在周圍尋找木筏方塊
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                Block block = world.getBlockAt(x + dx, 62, z + dz);
+                if (block.getType() == Material.OAK_PLANKS) {
+                    return new Location(world, x + dx + 0.5, 63, z + dz + 0.5, currentLoc.getYaw(), currentLoc.getPitch());
+                }
+            }
+        }
+
+        // 如果找不到，回到原始位置上方
+        return currentLoc.clone().add(0, 5, 0);
     }
 
     private void giveTemporaryFallProtection(Player player) {
@@ -323,52 +477,6 @@ public class RaftManager {
                 player.setFallDistance(0f);
             }
         }.runTaskLater(plugin, 100L);
-    }
-
-    private Location findSafeTeleportLocation(Location targetLocation) {
-        World world = targetLocation.getWorld();
-        int x = targetLocation.getBlockX();
-        int z = targetLocation.getBlockZ();
-
-        for (int y = targetLocation.getBlockY(); y <= world.getMaxHeight(); y++) {
-            Block standBlock = world.getBlockAt(x, y - 1, z);
-            Block feetBlock = world.getBlockAt(x, y, z);
-            Block headBlock = world.getBlockAt(x, y + 1, z);
-
-            if (standBlock.getType().isSolid() &&
-                    feetBlock.getType() == Material.AIR &&
-                    headBlock.getType() == Material.AIR) {
-                return new Location(world, x + 0.5, y, z + 0.5, targetLocation.getYaw(), targetLocation.getPitch());
-            }
-        }
-
-        for (int y = targetLocation.getBlockY(); y >= 60; y--) {
-            Block standBlock = world.getBlockAt(x, y - 1, z);
-            Block feetBlock = world.getBlockAt(x, y, z);
-            Block headBlock = world.getBlockAt(x, y + 1, z);
-
-            if (standBlock.getType().isSolid() &&
-                    feetBlock.getType() == Material.AIR &&
-                    headBlock.getType() == Material.AIR) {
-                return new Location(world, x + 0.5, y, z + 0.5, targetLocation.getYaw(), targetLocation.getPitch());
-            }
-        }
-
-        return targetLocation.clone().add(0, 5, 0);
-    }
-
-    private Location findSafeLocation(Location currentLoc) {
-        World world = currentLoc.getWorld();
-        int x = currentLoc.getBlockX();
-        int z = currentLoc.getBlockZ();
-
-        for (int y = currentLoc.getBlockY(); y >= 60; y--) {
-            Block block = world.getBlockAt(x, y, z);
-            if (block.getType().isSolid()) {
-                return new Location(world, x + 0.5, y + 1, z + 0.5, currentLoc.getYaw(), currentLoc.getPitch());
-            }
-        }
-        return new Location(world, x + 0.5, 63, z + 0.5, currentLoc.getYaw(), currentLoc.getPitch());
     }
 
     private void clearSpawnArea(Location spawnLocation) {
@@ -812,66 +920,30 @@ public class RaftManager {
         }
 
         Location raftLoc = playerRafts.get(playerId);
+        plugin.getLogger().info("开始完全清除玩家 " + playerId + " 的木筏区域，位置: " + raftLoc);
+
+        // 移除木筏方块
+        removeRaftBlocks(raftLoc);
+
+        // 额外清理周围区域（防止有残留建筑）
         World world = raftLoc.getWorld();
         int centerX = raftLoc.getBlockX();
         int centerZ = raftLoc.getBlockZ();
         int baseHeight = 62;
 
-        plugin.getLogger().info("開始完全清除玩家 " + playerId + " 的木筏區域，位置: " + centerX + ", " + centerZ);
-
-        // 擴大清除範圍到 15x15 區域
-        for (int x = -7; x <= 7; x++) {
-            for (int z = -7; z <= 7; z++) {
-                for (int y = baseHeight - 5; y <= baseHeight + 10; y++) {
-                    Block block = world.getBlockAt(centerX + x, y, centerZ + z);
-
-                    // 如果是原始木筏位置，設置為水
-                    boolean isOriginalRaft = Math.abs(x) <= 1 && Math.abs(z) <= 1 && y == baseHeight;
-
-                    if (isOriginalRaft) {
-                        block.setType(Material.WATER);
-                    }
-                    // 清除木筏上方的所有方塊
-                    else if (y >= baseHeight) {
-                        if (block.getType() != Material.WATER && block.getType() != Material.AIR) {
-                            block.setType(Material.AIR);
-                        }
-                    }
-                    // 確保木筏下方是水
-                    else if (y == baseHeight - 1) {
-                        if (block.getType() != Material.WATER) {
-                            block.setType(Material.WATER);
-                        }
-                    }
-                }
-            }
-        }
-
-        // 特別處理木筏核心區域
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
-                Block block = world.getBlockAt(centerX + x, baseHeight, centerZ + z);
-                // 確保木筏方塊被移除
-                if (block.getType() != Material.WATER) {
-                    block.setType(Material.WATER);
-                }
-
-                // 清除木筏上方的所有方塊
+        // 扩大清除范围到 7x7 区域
+        for (int x = -3; x <= 3; x++) {
+            for (int z = -3; z <= 3; z++) {
                 for (int y = baseHeight + 1; y <= baseHeight + 10; y++) {
-                    Block aboveBlock = world.getBlockAt(centerX + x, y, centerZ + z);
-                    if (aboveBlock.getType() != Material.AIR && aboveBlock.getType() != Material.WATER) {
-                        aboveBlock.setType(Material.AIR);
+                    Block block = world.getBlockAt(centerX + x, y, centerZ + z);
+                    if (block.getType() != Material.WATER && block.getType() != Material.AIR) {
+                        block.setType(Material.AIR);
                     }
                 }
             }
         }
 
-        // 強制重新載入區塊以確保客戶端更新
-        int chunkX = centerX >> 4;
-        int chunkZ = centerZ >> 4;
-        world.refreshChunk(chunkX, chunkZ);
-
-        plugin.getLogger().info("完成清除玩家 " + playerId + " 的木筏區域");
+        plugin.getLogger().info("完成清除玩家 " + playerId + " 的木筏区域");
     }
 
     private boolean isRaftStillExists(UUID playerId) {
