@@ -30,20 +30,20 @@ public class DataManager {
     }
 
     /**
-     * 保存所有木筏數據
+     * 保存所有木筏數據 - 移除等级相关数据
      */
     public void saveAllData(Map<UUID, Location> playerRafts,
-                            Map<UUID, Integer> raftLevels,
+                            Map<UUID, Integer> raftLevels, // 不再使用
                             Map<UUID, String> raftNames,
-                            Map<UUID, Double> raftValues,
-                            Map<UUID, Long> lastScanTime,
+                            Map<UUID, Double> raftValues, // 不再使用
+                            Map<UUID, Long> lastScanTime, // 不再使用
                             TeamManager teamManager) {
         try {
             // 清除舊數據
             dataConfig.set("rafts", null);
             dataConfig.set("teams", null);
 
-            // 保存木筏數據
+            // 保存木筏數據 - 只保存位置和名称
             for (UUID playerId : playerRafts.keySet()) {
                 String path = "rafts." + playerId.toString();
 
@@ -53,10 +53,8 @@ public class DataManager {
                 dataConfig.set(path + ".location.y", loc.getY());
                 dataConfig.set(path + ".location.z", loc.getZ());
 
-                dataConfig.set(path + ".level", raftLevels.get(playerId));
                 dataConfig.set(path + ".name", raftNames.get(playerId));
-                dataConfig.set(path + ".value", raftValues.get(playerId));
-                dataConfig.set(path + ".lastScan", lastScanTime.get(playerId));
+                // 移除等级、价值和扫描时间
             }
 
             // 保存團隊數據
@@ -95,7 +93,7 @@ public class DataManager {
     }
 
     /**
-     * 加載所有數據
+     * 加載所有數據 - 移除等级相关数据
      */
     public RaftData loadAllData() {
         RaftData raftData = new RaftData();
@@ -115,17 +113,13 @@ public class DataManager {
 
                     Location location = new Location(Bukkit.getWorld(worldName), x, y, z);
 
-                    // 加載其他數據
-                    int level = dataConfig.getInt(path + ".level", 1);
+                    // 加載名称
                     String name = dataConfig.getString(path + ".name", "木筏");
-                    double value = dataConfig.getDouble(path + ".value", 0.0);
-                    long lastScan = dataConfig.getLong(path + ".lastScan", 0);
 
                     raftData.playerRafts.put(playerId, location);
-                    raftData.raftLevels.put(playerId, level);
                     raftData.raftNames.put(playerId, name);
-                    raftData.raftValues.put(playerId, value);
-                    raftData.lastScanTime.put(playerId, lastScan);
+
+                    // 移除等级、价值和扫描时间的加载
 
                 } catch (IllegalArgumentException e) {
                     plugin.getLogger().warning("無效的UUID格式: " + playerIdStr);
@@ -172,12 +166,17 @@ public class DataManager {
      */
     public void startAutoSave() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            // 创建空的映射来替代等级相关数据
+            Map<UUID, Integer> emptyLevels = new HashMap<>();
+            Map<UUID, Double> emptyValues = new HashMap<>();
+            Map<UUID, Long> emptyScanTimes = new HashMap<>();
+
             saveAllData(
                     plugin.getRaftManager().getAllRafts(),
-                    plugin.getRaftManager().getAllRaftLevels(),
+                    emptyLevels,
                     plugin.getRaftManager().getAllRaftNames(),
-                    plugin.getRaftManager().getAllRaftValues(),
-                    plugin.getRaftManager().getAllLastScanTimes(),
+                    emptyValues,
+                    emptyScanTimes,
                     plugin.getRaftManager().getTeamManager()
             );
         }, 20L * 60 * 5, 20L * 60 * 5); // 每5分鐘自動保存
@@ -188,10 +187,7 @@ public class DataManager {
      */
     public static class RaftData {
         public Map<UUID, Location> playerRafts = new HashMap<>();
-        public Map<UUID, Integer> raftLevels = new HashMap<>();
         public Map<UUID, String> raftNames = new HashMap<>();
-        public Map<UUID, Double> raftValues = new HashMap<>();
-        public Map<UUID, Long> lastScanTime = new HashMap<>();
         public Map<UUID, UUID> teamMembers = new HashMap<>(); // 玩家ID -> 隊長ID
     }
 }

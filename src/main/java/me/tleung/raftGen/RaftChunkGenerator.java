@@ -216,6 +216,9 @@ public class RaftChunkGenerator extends ChunkGenerator {
 
                 generateSeaBedDetails(chunkData, x, z, worldX, worldZ, random, worldSeed);
                 generateSmoothOceanFeatures(chunkData, x, z, worldX, worldZ, random, worldSeed);
+
+                // 添加海洋生物标记生成
+                generateMarineLifeMarkers(chunkData, x, z, worldX, worldZ, random, worldSeed);
             }
         }
     }
@@ -486,6 +489,125 @@ public class RaftChunkGenerator extends ChunkGenerator {
             return Material.GRAVEL;
         } else {
             return Material.STONE;
+        }
+    }
+
+    // 海洋生物标记生成
+    private void generateMarineLifeMarkers(ChunkData chunkData, int x, int z, int worldX, int worldZ, Random random, long worldSeed) {
+        int seaLevel = 62;
+
+        // 找到海底表面
+        int surfaceY = -1;
+        for (int y = seaLevel - 1; y >= 5; y--) {
+            Material blockType = chunkData.getType(x, y, z);
+            if (blockType == Material.SAND || blockType == Material.GRAVEL || blockType == Material.CLAY || blockType == Material.STONE) {
+                surfaceY = y;
+                break;
+            }
+        }
+
+        if (surfaceY == -1 || surfaceY >= seaLevel - 1) return;
+
+        // 使用海洋生物噪声决定生成什么类型的标记
+        double marineNoise = getSmoothPerlinNoise(worldX, worldZ, 0.005, worldSeed + 160000);
+
+        // 根据深度决定海洋生物类型
+        int depth = seaLevel - surfaceY;
+
+        if (depth < 10) {
+            // 浅水区域 - 鱼类和海草
+            generateShallowWaterMarineLife(chunkData, x, z, worldX, worldZ, surfaceY, random, worldSeed, marineNoise);
+        } else if (depth < 25) {
+            // 中等深度 - 珊瑚和热带鱼
+            generateMediumDepthMarineLife(chunkData, x, z, worldX, worldZ, surfaceY, random, worldSeed, marineNoise);
+        } else {
+            // 深水区域 - 鱿鱼和发光生物
+            generateDeepWaterMarineLife(chunkData, x, z, worldX, worldZ, surfaceY, random, worldSeed, marineNoise);
+        }
+    }
+
+    // 浅水区域海洋生物生成
+    private void generateShallowWaterMarineLife(ChunkData chunkData, int x, int z, int worldX, int worldZ, int surfaceY, Random random, long worldSeed, double marineNoise) {
+        int seaLevel = 62;
+
+        // 生成海草
+        if (marineNoise > 0.2 && random.nextDouble() < 0.3) {
+            int height = 1 + random.nextInt(2);
+            for (int i = 1; i <= height; i++) {
+                if (surfaceY + i < seaLevel - 1) {
+                    chunkData.setBlock(x, surfaceY + i, z, Material.SEAGRASS);
+                }
+            }
+        }
+
+        // 生成海带
+        if (marineNoise > 0.4 && random.nextDouble() < 0.2) {
+            int kelpHeight = 2 + random.nextInt(4);
+            for (int i = 1; i <= kelpHeight; i++) {
+                if (surfaceY + i < seaLevel - 1) {
+                    chunkData.setBlock(x, surfaceY + i, z, Material.KELP);
+                }
+            }
+        }
+    }
+
+    // 中等深度海洋生物生成
+    private void generateMediumDepthMarineLife(ChunkData chunkData, int x, int z, int worldX, int worldZ, int surfaceY, Random random, long worldSeed, double marineNoise) {
+        int seaLevel = 62;
+
+        // 生成珊瑚
+        if (marineNoise > 0.3 && random.nextDouble() < 0.15) {
+            Material[] coralBlocks = {
+                    Material.TUBE_CORAL_BLOCK,
+                    Material.BRAIN_CORAL_BLOCK,
+                    Material.BUBBLE_CORAL_BLOCK,
+                    Material.FIRE_CORAL_BLOCK,
+                    Material.HORN_CORAL_BLOCK
+            };
+            Material coralBlock = coralBlocks[random.nextInt(coralBlocks.length)];
+            chunkData.setBlock(x, surfaceY, z, coralBlock);
+
+            // 在珊瑚上生成珊瑚扇
+            if (surfaceY + 1 < seaLevel - 1 && random.nextDouble() < 0.5) {
+                Material[] coralFans = {
+                        Material.TUBE_CORAL_FAN,
+                        Material.BRAIN_CORAL_FAN,
+                        Material.BUBBLE_CORAL_FAN,
+                        Material.FIRE_CORAL_FAN,
+                        Material.HORN_CORAL_FAN
+                };
+                Material coralFan = coralFans[random.nextInt(coralFans.length)];
+                chunkData.setBlock(x, surfaceY + 1, z, coralFan);
+            }
+        }
+
+        // 生成海泡菜
+        if (marineNoise > 0.1 && random.nextDouble() < 0.1) {
+            if (surfaceY + 1 < seaLevel - 1) {
+                int pickles = 1 + random.nextInt(3);
+                for (int i = 0; i < pickles; i++) {
+                    if (surfaceY + 1 < seaLevel - 1) {
+                        chunkData.setBlock(x, surfaceY + 1, z, Material.SEA_PICKLE);
+                    }
+                }
+            }
+        }
+    }
+
+    // 深水区域海洋生物生成
+    private void generateDeepWaterMarineLife(ChunkData chunkData, int x, int z, int worldX, int worldZ, int surfaceY, Random random, long worldSeed, double marineNoise) {
+        // 生成发光地衣（代表深海生物发光）
+        if (marineNoise > 0.5 && random.nextDouble() < 0.08) {
+            if (surfaceY > 10) {
+                chunkData.setBlock(x, surfaceY, z, Material.GLOW_LICHEN);
+            }
+        }
+
+        // 生成海晶石（代表深海矿物）
+        if (marineNoise < -0.3 && random.nextDouble() < 0.05) {
+            if (surfaceY > 15) {
+                chunkData.setBlock(x, surfaceY, z, Material.PRISMARINE);
+            }
         }
     }
 

@@ -37,6 +37,13 @@ raft-details:
   # 是否啟用裝飾
   enable-decorations: false
 
+# 海洋生物设置
+marine-life:
+  enabled: true
+  spawn-interval: 200
+  max-near-player: 10
+  spawn-chance: 0.3
+
 # 團隊設置
 team:
   # 邀請過期時間 (秒)

@@ -34,21 +34,6 @@ public interface RaftGenAPI {
     Location getRaftLocation(@NotNull UUID playerId);
 
     /**
-     * 獲取玩家的木筏等級
-     * @param playerId 玩家UUID
-     * @return 木筏等級，如果沒有木筏則返回0
-     */
-    int getRaftLevel(@NotNull UUID playerId);
-
-    /**
-     * 設置玩家的木筏等級
-     * @param playerId 玩家UUID
-     * @param level 新等級
-     * @return 是否成功設置
-     */
-    boolean setRaftLevel(@NotNull UUID playerId, int level);
-
-    /**
      * 刪除玩家的木筏
      * @param playerId 玩家UUID
      * @return 是否成功刪除
@@ -68,20 +53,6 @@ public interface RaftGenAPI {
      */
     @NotNull
     org.bukkit.World getRaftWorld();
-
-    /**
-     * 計算木筏的價值
-     * @param location 木筏位置
-     * @param radius 掃描半徑
-     * @return 總價值
-     */
-    double calculateRaftValue(@NotNull Location location, int radius);
-
-    /**
-     * 強制更新木筏等級
-     * @param playerId 玩家UUID
-     */
-    void updateRaftLevel(@NotNull UUID playerId);
 
     /**
      * 傳送玩家到木筏
@@ -114,20 +85,6 @@ public interface RaftGenAPI {
     boolean setRaftName(@NotNull UUID playerId, @NotNull String name);
 
     /**
-     * 獲取木筏價值
-     * @param playerId 玩家UUID
-     * @return 木筏價值
-     */
-    double getRaftValue(@NotNull UUID playerId);
-
-    /**
-     * 獲取木筏半徑
-     * @param playerId 玩家UUID
-     * @return 木筏半徑
-     */
-    int getRaftRadius(@NotNull UUID playerId);
-
-    /**
      * 獲取所有木筏數據
      * @return 木筏數據映射
      */
@@ -141,30 +98,11 @@ public interface RaftGenAPI {
     int getTotalRaftCount();
 
     /**
-     * 檢查自動掃描是否啟用
-     * @return 是否啟用自動掃描
-     */
-    boolean isAutoScanEnabled();
-
-    /**
-     * 設置自動掃描狀態
-     * @param enabled 是否啟用
-     */
-    void setAutoScanEnabled(boolean enabled);
-
-    /**
      * 獲取團隊API
      * @return 團隊API
      */
     @NotNull
     TeamAPI getTeamAPI();
-
-    /**
-     * 獲取等級計算API
-     * @return 等級計算API
-     */
-    @NotNull
-    LevelAPI getLevelAPI();
 
     /**
      * 獲取插件狀態信息
@@ -194,13 +132,6 @@ public interface RaftGenAPI {
      * @return 是否是隊長
      */
     boolean isTeamLeader(@NotNull UUID playerId);
-
-    /**
-     * 獲取木筏等級映射
-     * @return 等級映射
-     */
-    @NotNull
-    Map<UUID, Integer> getAllRaftLevels();
 
     /**
      * 獲取木筏名稱映射

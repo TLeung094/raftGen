@@ -2,7 +2,6 @@ package me.tleung.raftGen;
 
 import me.tleung.raftGen.event.RaftCreateEvent;
 import me.tleung.raftGen.event.RaftDeleteEvent;
-import me.tleung.raftGen.event.RaftLevelUpEvent;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
@@ -17,51 +16,48 @@ public class RaftManager {
 
     private final RaftGen plugin;
     private final HashMap<UUID, Location> playerRafts;
-    private final HashMap<UUID, Integer> raftLevels;
     private final HashMap<UUID, String> raftNames;
     private final HashMap<UUID, Long> deleteConfirmations;
     private World raftWorld;
     private final Random random;
     private final TeamManager teamManager;
     private final DataManager dataManager;
-
-    private final LevelCalculator levelCalculator;
-    private final HashMap<UUID, Double> raftValues;
-    private final HashMap<UUID, Long> lastScanTime;
-    private boolean autoScanEnabled;
+    private final MarineLifeManager marineLifeManager;
 
     public RaftManager(RaftGen plugin) {
         this.plugin = plugin;
         this.playerRafts = new HashMap<>();
-        this.raftLevels = new HashMap<>();
         this.raftNames = new HashMap<>();
         this.deleteConfirmations = new HashMap<>();
         this.raftWorld = null;
         this.random = new Random();
         this.teamManager = new TeamManager(plugin);
         this.dataManager = new DataManager(plugin);
-
-        this.levelCalculator = new LevelCalculator();
-        this.raftValues = new HashMap<>();
-        this.lastScanTime = new HashMap<>();
-        this.autoScanEnabled = plugin.getConfig().getBoolean("level.auto-scan-enabled", true);
+        this.marineLifeManager = new MarineLifeManager(plugin);
 
         initializeRaftWorld();
     }
 
-    private void initializeRaftWorld() {
+    /**
+     * 初始化木筏世界（改为公共方法供其他类调用）
+     */
+    public void initializeRaftWorld() {
         String worldName = plugin.getConfig().getString("raft.world-name", "raft_world");
         boolean enableSeparateWorld = plugin.getConfig().getBoolean("raft.enable-separate-world", true);
 
         if (!enableSeparateWorld) {
             raftWorld = Bukkit.getWorld("world");
             plugin.getLogger().info("使用主世界作為木筏世界");
+            if (raftWorld != null) {
+                setupWorldRules();
+            }
             return;
         }
 
         raftWorld = Bukkit.getWorld(worldName);
         if (raftWorld != null) {
             plugin.getLogger().info("木筏世界 '" + worldName + "' 已載入");
+            setupWorldRules();
             return;
         }
 
@@ -82,14 +78,22 @@ public class RaftManager {
             } else {
                 plugin.getLogger().warning("木筏世界創建失敗，使用主世界");
                 raftWorld = Bukkit.getWorld("world");
+                if (raftWorld != null) {
+                    setupWorldRules();
+                }
             }
         } catch (Exception e) {
             plugin.getLogger().warning("創建木筏世界時發生錯誤: " + e.getMessage());
             raftWorld = Bukkit.getWorld("world");
+            if (raftWorld != null) {
+                setupWorldRules();
+            }
         }
     }
 
     private void setupWorldRules() {
+        if (raftWorld == null) return;
+
         raftWorld.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
         raftWorld.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
         raftWorld.setGameRule(GameRule.DO_MOB_SPAWNING, false);
@@ -161,21 +165,14 @@ public class RaftManager {
         raftLocation = event.getLocation();
 
         playerRafts.put(playerId, raftLocation);
-        raftLevels.put(playerId, 1);
         raftNames.put(playerId, player.getName() + "的木筏");
-
-        raftValues.put(playerId, 0.0);
-        lastScanTime.put(playerId, System.currentTimeMillis());
 
         if (teamManager.isTeamLeader(playerId)) {
             Set<UUID> teamMembers = teamManager.getTeamMembers(playerId);
             for (UUID memberId : teamMembers) {
                 if (!memberId.equals(playerId)) {
                     playerRafts.put(memberId, raftLocation);
-                    raftLevels.put(memberId, 1);
                     raftNames.put(memberId, player.getName() + "的隊伍木筏");
-                    raftValues.put(memberId, 0.0);
-                    lastScanTime.put(memberId, System.currentTimeMillis());
                 }
             }
             teamManager.broadcastToTeam(playerId, "§a隊長已創建隊伍木筏! 使用 §e/raft home §a傳送過去");
@@ -197,6 +194,24 @@ public class RaftManager {
                 // 生成木筏方块
                 generateRaftBlocks(finalRaftLocation);
 
+                // 在木筏周围生成海洋生物 - 添加检查确保系统就绪
+                if (marineLifeManager != null && marineLifeManager.isEnabled()) {
+                    marineLifeManager.spawnMarineLifeAroundRaft(finalRaftLocation);
+                } else {
+                    plugin.getLogger().info("海洋生物系统未就绪，跳过初始生成");
+                    // 尝试重新启动海洋生物系统
+                    if (marineLifeManager != null) {
+                        marineLifeManager.restart();
+                        // 延迟生成海洋生物
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (marineLifeManager.isEnabled()) {
+                                marineLifeManager.spawnMarineLifeAroundRaft(finalRaftLocation);
+                                plugin.getLogger().info("延迟生成木筏周围的海洋生物");
+                            }
+                        }, 40L); // 延迟2秒
+                    }
+                }
+
                 // 直接使用 baseHeight + 1 生成玩家
                 Location spawnLocation = new Location(raftWorld, finalRaftLocation.getX() + 0.5, finalBaseHeight + 1, finalRaftLocation.getZ() + 0.5);
                 spawnLocation.setYaw(180);
@@ -212,9 +227,9 @@ public class RaftManager {
 
                 player.sendMessage("§a=== 你的木筏已生成完成! ===");
                 player.sendMessage("§6木筏名稱: §e" + raftNames.get(finalPlayerId));
-                player.sendMessage("§6木筏等級: §e1");
                 player.sendMessage("§6世界: §b" + raftWorld.getName());
                 player.sendMessage("§6木筏大小: §e3x3 木筏");
+                player.sendMessage("§6海洋生態: §a" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用海洋生物生成" : "海洋生物生成待處理"));
 
                 if (teamManager.isTeamLeader(finalPlayerId)) {
                     player.sendMessage("§6隊伍成員: §e" + (teamManager.getTeamMembers(finalPlayerId).size()) + " 人");
@@ -563,8 +578,21 @@ public class RaftManager {
             public void run() {
                 resetRaftStructures(finalRaftLoc);
                 ensureRaftGenerated(finalRaftLoc);
+
+                // 重置后在木筏周围重新生成海洋生物 - 添加检查
+                if (marineLifeManager != null && marineLifeManager.isEnabled()) {
+                    marineLifeManager.spawnMarineLifeAroundRaft(finalRaftLoc);
+                } else {
+                    plugin.getLogger().info("海洋生物系统未就绪，跳过重置后的生成");
+                    // 尝试重新启动海洋生物系统
+                    if (marineLifeManager != null) {
+                        marineLifeManager.restart();
+                    }
+                }
+
                 player.sendMessage("§a木筏重置完成!");
                 player.sendMessage("§6木筏已恢復為純淨地形");
+                player.sendMessage("§6海洋生態: §e" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已重新生成" : "生成待處理"));
 
                 if (teamManager.isTeamLeader(finalPlayerId)) {
                     teamManager.broadcastToTeam(finalPlayerId, "§a隊伍木筏已重置!");
@@ -592,10 +620,10 @@ public class RaftManager {
         Location raftLoc = playerRafts.get(targetPlayerId);
         player.sendMessage("§6=== 木筏資訊 ===");
         player.sendMessage("§a名稱: §f" + raftNames.get(targetPlayerId));
-        player.sendMessage("§a等級: §f" + raftLevels.get(targetPlayerId));
         player.sendMessage("§a位置: §f" + formatLocation(raftLoc));
         player.sendMessage("§a世界: §b" + raftLoc.getWorld().getName());
         player.sendMessage("§a大小: §f3x3 木筏");
+        player.sendMessage("§a海洋生態: §" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "a已啟用" : "c未啟用"));
 
         if (teamLeaderId != null) {
             Player leader = Bukkit.getPlayer(teamLeaderId);
@@ -643,10 +671,7 @@ public class RaftManager {
 
             completelyClearRaftArea(targetPlayerId);
             playerRafts.remove(targetPlayerId);
-            raftLevels.remove(targetPlayerId);
             raftNames.remove(targetPlayerId);
-            raftValues.remove(targetPlayerId);
-            lastScanTime.remove(targetPlayerId);
 
             player.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
             if (targetPlayer.isOnline()) {
@@ -784,19 +809,13 @@ public class RaftManager {
                             Set<UUID> teamMembers = teamManager.getTeamMembers(finalPlayerId);
                             for (UUID memberId : teamMembers) {
                                 playerRafts.remove(memberId);
-                                raftLevels.remove(memberId);
                                 raftNames.remove(memberId);
-                                raftValues.remove(memberId);
-                                lastScanTime.remove(memberId);
                                 deleteConfirmations.remove(memberId);
                             }
                             teamManager.broadcastToTeam(finalPlayerId, "§c隊伍木筏已被隊長刪除!");
                         } else {
                             playerRafts.remove(finalTargetPlayerId);
-                            raftLevels.remove(finalTargetPlayerId);
                             raftNames.remove(finalTargetPlayerId);
-                            raftValues.remove(finalTargetPlayerId);
-                            lastScanTime.remove(finalTargetPlayerId);
                             deleteConfirmations.remove(finalPlayerId);
                         }
 
@@ -825,10 +844,7 @@ public class RaftManager {
                 if (offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(targetPlayerName)) {
                     completelyClearRaftArea(playerId);
                     playerRafts.remove(playerId);
-                    raftLevels.remove(playerId);
                     raftNames.remove(playerId);
-                    raftValues.remove(playerId);
-                    lastScanTime.remove(playerId);
 
                     sender.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
 
@@ -853,10 +869,7 @@ public class RaftManager {
 
         completelyClearRaftArea(targetPlayerId);
         playerRafts.remove(targetPlayerId);
-        raftLevels.remove(targetPlayerId);
         raftNames.remove(targetPlayerId);
-        raftValues.remove(targetPlayerId);
-        lastScanTime.remove(targetPlayerId);
 
         sender.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
         if (targetPlayer.isOnline()) {
@@ -873,10 +886,7 @@ public class RaftManager {
     public void forceDeleteRaft(UUID playerId) {
         completelyClearRaftArea(playerId);
         playerRafts.remove(playerId);
-        raftLevels.remove(playerId);
         raftNames.remove(playerId);
-        raftValues.remove(playerId);
-        lastScanTime.remove(playerId);
         deleteConfirmations.remove(playerId);
 
         // 刪除後保存數據
@@ -1023,25 +1033,6 @@ public class RaftManager {
         }.runTaskTimer(plugin, 6000L, 6000L);
     }
 
-    public void startAutoScanTask() {
-        if (!autoScanEnabled) {
-            plugin.getLogger().info("自動等級掃描功能已停用");
-            return;
-        }
-
-        int scanInterval = plugin.getConfig().getInt("level.auto-scan-interval", 10);
-        long intervalTicks = 20L * 60L * scanInterval;
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                autoScanAllRafts();
-            }
-        }.runTaskTimer(plugin, intervalTicks, intervalTicks);
-
-        plugin.getLogger().info("自動等級掃描任務已啟動，間隔: " + scanInterval + " 分鐘");
-    }
-
     public void listAllRafts(CommandSender sender) {
         if (!sender.hasPermission("raftgen.admin")) {
             sender.sendMessage("§c你沒有權限使用此指令!");
@@ -1058,6 +1049,7 @@ public class RaftManager {
         sender.sendMessage("§a木筏間距: §f200 格");
         sender.sendMessage("§a木筏大小: §f3x3 木筏");
         sender.sendMessage("§a木筏類型: §f純淨浮島，無裝飾");
+        sender.sendMessage("§a海洋生態: §f" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用海洋生物生成" : "海洋生物生成未啟用"));
         sender.sendMessage("");
 
         for (UUID playerId : playerRafts.keySet()) {
@@ -1065,70 +1057,16 @@ public class RaftManager {
                 OfflinePlayer player = plugin.getServer().getOfflinePlayer(playerId);
                 String playerName = player.getName() != null ? player.getName() : "未知玩家";
                 Location loc = playerRafts.get(playerId);
-                int level = raftLevels.get(playerId);
                 String raftName = raftNames.get(playerId);
 
                 sender.sendMessage("§e" + playerName + " §7- §f" + raftName);
-                sender.sendMessage("  §7等級: §f" + level + " §7| 位置: §f" + formatLocation(loc));
+                sender.sendMessage("  §7位置: §f" + formatLocation(loc));
 
                 if (teamManager.isTeamLeader(playerId)) {
                     sender.sendMessage("  §7隊伍: §f隊長，成員: " + teamManager.getTeamMembers(playerId).size() + " 人");
                 }
                 sender.sendMessage("");
             }
-        }
-    }
-
-    public void handleCalculateCommand(Player player) {
-        UUID playerId = player.getUniqueId();
-
-        long currentTime = System.currentTimeMillis();
-        long lastScan = lastScanTime.getOrDefault(playerId, 0L);
-        long cooldown = plugin.getConfig().getLong("level.manual-scan-cooldown", 30000);
-
-        if (currentTime - lastScan < cooldown) {
-            long remaining = (cooldown - (currentTime - lastScan)) / 1000;
-            player.sendMessage("§c請等待 " + remaining + " 秒後再進行掃描");
-            return;
-        }
-
-        player.sendMessage("§e正在掃描木筏並計算等級...");
-        lastScanTime.put(playerId, currentTime);
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            updateRaftLevel(player, false);
-        });
-    }
-
-    public void sendDetailedStats(Player player) {
-        UUID playerId = player.getUniqueId();
-
-        if (!raftValues.containsKey(playerId)) {
-            player.sendMessage("§c請先使用 §e/raft calculate §c掃描你的木筏");
-            return;
-        }
-
-        double currentValue = raftValues.get(playerId);
-        int currentLevel = getPlayerRaftLevel(playerId);
-        double nextLevelValue = levelCalculator.getValueForNextLevel(currentLevel);
-        double neededValue = Math.max(0, nextLevelValue - currentValue);
-
-        player.sendMessage("§6=== 木筏詳細統計 ===");
-        player.sendMessage("§a當前等級: §e" + currentLevel);
-        player.sendMessage("§a木筏總價值: §e" + String.format("%.1f", currentValue) + " 點");
-        player.sendMessage("§a距離下一級: §e" + String.format("%.1f", neededValue) + " 點");
-        player.sendMessage("§a木筏大小: §e" + ((getRaftRadius(playerId) * 2) + 1) + "x" + ((getRaftRadius(playerId) * 2) + 1));
-        player.sendMessage("§a升級提示: §f放置更有價值的方塊來提升等級!");
-
-        int progress = (int) ((currentValue / nextLevelValue) * 100);
-        displayProgressBar(player, progress);
-
-        if (neededValue > 0) {
-            player.sendMessage("§e💡 升級建議:");
-            player.sendMessage("  §7- 放置 §6鐵塊 §7(+20點)");
-            player.sendMessage("  §7- 放置 §b鑽石塊 §7(+50點)");
-            player.sendMessage("  §7- 放置 §a綠寶石塊 §7(+40點)");
-            player.sendMessage("  §7- 建造 §e附魔台 §7(+15點)");
         }
     }
 
@@ -1146,13 +1084,12 @@ public class RaftManager {
         }
         initializeRaftWorld();
         player.sendMessage("§a木筏世界重新載入完成: " + (raftWorld != null ? raftWorld.getName() : "失敗"));
-    }
 
-    /**
-     * 計算木筏價值 (API使用)
-     */
-    public double calculateRaftValue(Location location, int radius) {
-        return levelCalculator.calculateRaftValue(location, radius);
+        // 重新启动海洋生物系统
+        if (marineLifeManager != null) {
+            marineLifeManager.restart();
+            player.sendMessage("§a海洋生物系统已重新启动");
+        }
     }
 
     private void cleanupExpiredConfirmations() {
@@ -1160,167 +1097,6 @@ public class RaftManager {
         deleteConfirmations.entrySet().removeIf(entry ->
                 currentTime - entry.getValue() > 30000
         );
-    }
-
-    private void autoScanAllRafts() {
-        int scannedCount = 0;
-
-        for (UUID playerId : playerRafts.keySet()) {
-            if (teamManager.isTeamLeader(playerId) || !teamManager.isInTeam(playerId)) {
-                scannedCount++;
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    Player player = Bukkit.getPlayer(playerId);
-                    if (player != null && player.isOnline()) {
-                        updateRaftLevel(player, true);
-                    }
-                });
-            }
-        }
-        plugin.getLogger().info("自動掃描完成: 掃描 " + scannedCount + " 個木筏");
-
-        // 自動掃描後保存數據
-        saveData();
-    }
-
-    private void updateRaftLevel(Player player, boolean isAutoScan) {
-        UUID playerId = player.getUniqueId();
-
-        if (!playerRafts.containsKey(playerId)) {
-            if (!isAutoScan) {
-                player.sendMessage("§c你還沒有木筏! 使用 /raft create 創建一個");
-            }
-            return;
-        }
-
-        Location raftLocation = playerRafts.get(playerId);
-        int raftRadius = getRaftRadius(playerId);
-
-        double totalValue = levelCalculator.calculateRaftValue(raftLocation, raftRadius);
-        raftValues.put(playerId, totalValue);
-
-        int newLevel = levelCalculator.calculateLevel(totalValue);
-        int oldLevel = raftLevels.getOrDefault(playerId, 1);
-
-        // 調用等級提升事件
-        if (newLevel > oldLevel) {
-            RaftLevelUpEvent event = new RaftLevelUpEvent(player, oldLevel, newLevel);
-            Bukkit.getPluginManager().callEvent(event);
-        }
-
-        raftLevels.put(playerId, newLevel);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (newLevel > oldLevel) {
-                onLevelUp(player, oldLevel, newLevel);
-            }
-
-            if (!isAutoScan || newLevel > oldLevel) {
-                sendLevelUpdateMessage(player, totalValue, newLevel, oldLevel);
-            }
-
-            // 等級更新後保存數據
-            saveData();
-        });
-    }
-
-    private void onLevelUp(Player player, int oldLevel, int newLevel) {
-        player.sendMessage("§6🎉 恭喜! 木筏等級提升! §e" + oldLevel + " → " + newLevel);
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-        player.spawnParticle(Particle.HEART, player.getLocation(), 30);
-
-        applyLevelBenefits(player, newLevel);
-
-        UUID teamLeaderId = teamManager.getPlayerTeamLeader(player.getUniqueId());
-        if (teamLeaderId != null) {
-            teamManager.broadcastToTeam(teamLeaderId, "§a隊伍木筏已升級到等級 " + newLevel + "!");
-        }
-    }
-
-    private void applyLevelBenefits(Player player, int newLevel) {
-        switch (newLevel) {
-            case 5:
-                player.sendMessage("§b✨ 解鎖: 木筏擴大到 7x7!");
-                break;
-            case 10:
-                player.sendMessage("§b✨ 解鎖: 木筏擴大到 9x9!");
-                break;
-            case 15:
-                player.sendMessage("§b✨ 解鎖: 木筏擴大到 11x11!");
-                break;
-            case 20:
-                player.sendMessage("§b✨ 解鎖: 木筏擴大到 13x13!");
-                player.sendMessage("§6🎊 恭喜達到最大等級!");
-                break;
-        }
-    }
-
-    private void sendLevelUpdateMessage(Player player, double totalValue, int newLevel, int oldLevel) {
-        double nextLevelValue = levelCalculator.getValueForNextLevel(newLevel);
-        double currentValue = raftValues.get(player.getUniqueId());
-        int progress = (int) ((currentValue / nextLevelValue) * 100);
-
-        player.sendMessage("§6=== 木筏等級資訊 ===");
-        player.sendMessage("§a當前等級: §e" + newLevel + " §7(之前: " + oldLevel + ")");
-        player.sendMessage("§a木筏價值: §e" + String.format("%.1f", totalValue) + " 點");
-        player.sendMessage("§a下一等級: §e" + (newLevel + 1) + " §7(需要: " + String.format("%.1f", nextLevelValue) + " 點)");
-        player.sendMessage("§a進度: §e" + progress + "%");
-        displayProgressBar(player, progress);
-    }
-
-    private void displayProgressBar(Player player, int progress) {
-        StringBuilder bar = new StringBuilder("§a[");
-        int bars = progress / 5;
-
-        for (int i = 0; i < 20; i++) {
-            if (i < bars) {
-                bar.append("█");
-            } else {
-                bar.append("§7█");
-            }
-        }
-        bar.append("§a] §e").append(progress).append("%");
-        player.sendMessage(bar.toString());
-    }
-
-    private int getRaftRadius(UUID playerId) {
-        int level = getPlayerRaftLevel(playerId);
-        return 1 + (level / 5);
-    }
-
-    private void removeRaftStructures(UUID playerId) {
-        if (!playerRafts.containsKey(playerId)) {
-            return;
-        }
-
-        Location raftLoc = playerRafts.get(playerId);
-        World world = raftLoc.getWorld();
-        int centerX = raftLoc.getBlockX();
-        int centerZ = raftLoc.getBlockZ();
-        int baseHeight = 62;
-        int radius = 5;
-
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                for (int y = baseHeight - 10; y <= baseHeight + 20; y++) {
-                    double distance = Math.sqrt(x * x + z * z);
-                    if (distance <= radius) {
-                        Block block = world.getBlockAt(centerX + x, y, centerZ + z);
-                        if (isPlayerStructure(block.getType())) {
-                            block.setType(Material.AIR);
-                        }
-                    }
-                }
-            }
-        }
-        plugin.getLogger().info("已清理玩家 " + playerId + " 的木筏區域");
-    }
-
-    private boolean isPlayerStructure(Material material) {
-        return material == Material.CHEST ||
-                material == Material.CRAFTING_TABLE ||
-                material == Material.FURNACE ||
-                material == Material.TORCH ||
-                material == Material.OAK_PLANKS;
     }
 
     private void preloadChunks(Location center) {
@@ -1341,16 +1117,6 @@ public class RaftManager {
 
     private String formatLocation(Location loc) {
         return String.format("X: %d, Y: %d, Z: %d", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-    }
-
-    private int findSurfaceHeight(World world, int x, int z, int defaultHeight) {
-        for (int y = defaultHeight + 10; y >= 60; y--) {
-            Block block = world.getBlockAt(x, y, z);
-            if (block.getType() == Material.GRASS_BLOCK || block.getType() == Material.SAND || block.getType() == Material.STONE) {
-                return y + 1;
-            }
-        }
-        return defaultHeight;
     }
 
     private void resetRaftStructures(Location center) {
@@ -1374,6 +1140,14 @@ public class RaftManager {
         }
     }
 
+    private boolean isPlayerStructure(Material material) {
+        return material == Material.CHEST ||
+                material == Material.CRAFTING_TABLE ||
+                material == Material.FURNACE ||
+                material == Material.TORCH ||
+                material == Material.OAK_PLANKS;
+    }
+
     // === 數據持久化方法 ===
 
     /**
@@ -1383,10 +1157,7 @@ public class RaftManager {
         DataManager.RaftData raftData = dataManager.loadAllData();
 
         this.playerRafts.putAll(raftData.playerRafts);
-        this.raftLevels.putAll(raftData.raftLevels);
         this.raftNames.putAll(raftData.raftNames);
-        this.raftValues.putAll(raftData.raftValues);
-        this.lastScanTime.putAll(raftData.lastScanTime);
 
         // 加載團隊數據到 TeamManager
         teamManager.loadTeamData(raftData.teamMembers);
@@ -1396,7 +1167,12 @@ public class RaftManager {
      * 保存當前數據
      */
     public void saveData() {
-        dataManager.saveAllData(playerRafts, raftLevels, raftNames, raftValues, lastScanTime, teamManager);
+        // 创建空的映射来替代等级相关数据
+        Map<UUID, Integer> emptyLevels = new HashMap<>();
+        Map<UUID, Double> emptyValues = new HashMap<>();
+        Map<UUID, Long> emptyScanTimes = new HashMap<>();
+
+        dataManager.saveAllData(playerRafts, emptyLevels, raftNames, emptyValues, emptyScanTimes, teamManager);
     }
 
     /**
@@ -1433,63 +1209,30 @@ public class RaftManager {
     }
 
     /**
-     * 獲取木筏價值 (API使用)
-     */
-    public double getRaftValue(UUID playerId) {
-        return raftValues.getOrDefault(playerId, 0.0);
-    }
-
-    /**
-     * 獲取木筏等級映射 (API使用)
-     */
-    public Map<UUID, Integer> getAllRaftLevels() {
-        return new HashMap<>(raftLevels);
-    }
-
-    /**
      * 獲取木筏名稱映射 (API使用)
      */
     public Map<UUID, String> getAllRaftNames() {
         return new HashMap<>(raftNames);
     }
 
+    // === 海洋生物系統方法 ===
+
     /**
-     * 獲取木筏價值映射 (API使用)
+     * 獲取海洋生物管理器
      */
-    public Map<UUID, Double> getAllRaftValues() {
-        return new HashMap<>(raftValues);
+    public MarineLifeManager getMarineLifeManager() {
+        return marineLifeManager;
     }
 
     /**
-     * 獲取最後掃描時間映射 (API使用)
+     * 在指定位置生成海洋生物
      */
-    public Map<UUID, Long> getAllLastScanTimes() {
-        return new HashMap<>(lastScanTime);
-    }
-
-    // === 缺失的方法修復 ===
-
-    /**
-     * 檢查自動掃描是否啟用 (API使用)
-     */
-    public boolean isAutoScanEnabled() {
-        return autoScanEnabled;
-    }
-
-    /**
-     * 設置自動掃描狀態 (API使用)
-     */
-    public void setAutoScanEnabled(boolean enabled) {
-        this.autoScanEnabled = enabled;
-        plugin.getConfig().set("level.auto-scan-enabled", enabled);
-        plugin.saveConfig();
-    }
-
-    /**
-     * 獲取木筏管理器實例 (用於診斷)
-     */
-    public RaftManager getRaftManager() {
-        return this;
+    public void spawnMarineLifeAtLocation(Location location, int count) {
+        if (marineLifeManager != null && marineLifeManager.isEnabled()) {
+            marineLifeManager.spawnMarineLifeAround(location, 10, count);
+        } else {
+            plugin.getLogger().warning("海洋生物系统未启用，无法生成海洋生物");
+        }
     }
 
     // === 基本Getter方法 ===
@@ -1514,24 +1257,10 @@ public class RaftManager {
         return playerRafts.get(playerId);
     }
 
-    public int getPlayerRaftLevel(UUID playerId) {
-        return raftLevels.getOrDefault(playerId, 0);
-    }
-
-    public void setPlayerRaftLevel(UUID playerId, int level) {
-        if (playerRafts.containsKey(playerId)) {
-            raftLevels.put(playerId, level);
-            saveData(); // 設置等級後保存數據
-        }
-    }
-
-    public boolean upgradeRaft(UUID playerId) {
-        if (playerRafts.containsKey(playerId)) {
-            int currentLevel = raftLevels.get(playerId);
-            raftLevels.put(playerId, currentLevel + 1);
-            saveData(); // 升級後保存數據
-            return true;
-        }
-        return false;
+    /**
+     * 检查海洋生物系统状态
+     */
+    public boolean isMarineLifeEnabled() {
+        return marineLifeManager != null && marineLifeManager.isEnabled();
     }
 }
