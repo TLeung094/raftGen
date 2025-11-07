@@ -149,7 +149,7 @@ public class RaftGenAPIImpl implements RaftGenAPI {
         return raftManager.getAllRaftNames();
     }
 
-    // TeamAPI 實現類
+    // TeamAPI 实现类
     private class TeamAPIImpl implements TeamAPI {
         @Override
         public boolean createTeam(@NotNull Player leader) {
@@ -222,7 +222,7 @@ public class RaftGenAPIImpl implements RaftGenAPI {
         @Override
         public String getTeamInfo(@NotNull Player player) {
             teamManager.showTeamInfo(player);
-            return "團隊信息已發送給玩家";
+            return "团队信息已发送给玩家";
         }
 
         @Override
@@ -246,17 +246,4 @@ public class RaftGenAPIImpl implements RaftGenAPI {
             return teamManager.cancelInvite(playerId);
         }
     }
-
-    // 以下方法已移除，因为等级系统已被删除：
-    // - getRaftLevel()
-    // - setRaftLevel()
-    // - calculateRaftValue()
-    // - updateRaftLevel()
-    // - getRaftValue()
-    // - getRaftRadius()
-    // - isAutoScanEnabled()
-    // - setAutoScanEnabled()
-    // - getLevelAPI()
-    // - getAllRaftLevels()
-    // - LevelAPIImpl 内部类
 }

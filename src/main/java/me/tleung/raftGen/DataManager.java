@@ -1,3 +1,4 @@
+// DataManager.java
 package me.tleung.raftGen;
 
 import org.bukkit.Bukkit;
@@ -30,20 +31,17 @@ public class DataManager {
     }
 
     /**
-     * 保存所有木筏數據 - 移除等级相关数据
+     * 保存所有木筏数据 - 移除等级相关数据
      */
     public void saveAllData(Map<UUID, Location> playerRafts,
-                            Map<UUID, Integer> raftLevels, // 不再使用
                             Map<UUID, String> raftNames,
-                            Map<UUID, Double> raftValues, // 不再使用
-                            Map<UUID, Long> lastScanTime, // 不再使用
                             TeamManager teamManager) {
         try {
-            // 清除舊數據
+            // 清除旧数据
             dataConfig.set("rafts", null);
             dataConfig.set("teams", null);
 
-            // 保存木筏數據 - 只保存位置和名称
+            // 保存木筏数据 - 只保存位置和名称
             for (UUID playerId : playerRafts.keySet()) {
                 String path = "rafts." + playerId.toString();
 
@@ -54,24 +52,23 @@ public class DataManager {
                 dataConfig.set(path + ".location.z", loc.getZ());
 
                 dataConfig.set(path + ".name", raftNames.get(playerId));
-                // 移除等级、价值和扫描时间
             }
 
-            // 保存團隊數據
+            // 保存团队数据
             saveTeamData(teamManager);
 
             dataConfig.save(dataFile);
-            plugin.getLogger().info("木筏數據已保存: " + playerRafts.size() + " 個木筏");
+            plugin.getLogger().info("木筏数据已保存: " + playerRafts.size() + " 个木筏");
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "保存木筏數據時發生錯誤", e);
+            plugin.getLogger().log(Level.SEVERE, "保存木筏数据时发生错误", e);
         }
     }
 
     /**
-     * 保存團隊數據
+     * 保存团队数据
      */
     private void saveTeamData(TeamManager teamManager) {
-        // 保存團隊結構
+        // 保存团队结构
         Set<UUID> processedTeams = new HashSet<>();
 
         for (UUID playerId : teamManager.getAllPlayersInTeams()) {
@@ -79,7 +76,7 @@ public class DataManager {
             if (leaderId != null && !processedTeams.contains(leaderId)) {
                 String teamPath = "teams." + leaderId.toString();
 
-                // 保存團隊成員
+                // 保存团队成员
                 Set<UUID> members = teamManager.getTeamMembers(leaderId);
                 List<String> memberList = new ArrayList<>();
                 for (UUID memberId : members) {
@@ -93,19 +90,19 @@ public class DataManager {
     }
 
     /**
-     * 加載所有數據 - 移除等级相关数据
+     * 加载所有数据 - 移除等级相关数据
      */
     public RaftData loadAllData() {
         RaftData raftData = new RaftData();
 
-        // 加載木筏數據
+        // 加载木筏数据
         if (dataConfig.isConfigurationSection("rafts")) {
             for (String playerIdStr : dataConfig.getConfigurationSection("rafts").getKeys(false)) {
                 try {
                     UUID playerId = UUID.fromString(playerIdStr);
                     String path = "rafts." + playerIdStr;
 
-                    // 加載位置
+                    // 加载位置
                     String worldName = dataConfig.getString(path + ".location.world");
                     double x = dataConfig.getDouble(path + ".location.x");
                     double y = dataConfig.getDouble(path + ".location.y");
@@ -113,29 +110,27 @@ public class DataManager {
 
                     Location location = new Location(Bukkit.getWorld(worldName), x, y, z);
 
-                    // 加載名称
+                    // 加载名称
                     String name = dataConfig.getString(path + ".name", "木筏");
 
                     raftData.playerRafts.put(playerId, location);
                     raftData.raftNames.put(playerId, name);
 
-                    // 移除等级、价值和扫描时间的加载
-
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("無效的UUID格式: " + playerIdStr);
+                    plugin.getLogger().warning("无效的UUID格式: " + playerIdStr);
                 }
             }
         }
 
-        // 加載團隊數據
+        // 加载团队数据
         loadTeamData(raftData);
 
-        plugin.getLogger().info("木筏數據加載完成: " + raftData.playerRafts.size() + " 個木筏");
+        plugin.getLogger().info("木筏数据加载完成: " + raftData.playerRafts.size() + " 个木筏");
         return raftData;
     }
 
     /**
-     * 加載團隊數據
+     * 加载团队数据
      */
     private void loadTeamData(RaftData raftData) {
         if (dataConfig.isConfigurationSection("teams")) {
@@ -150,44 +145,36 @@ public class DataManager {
                             UUID memberId = UUID.fromString(memberIdStr);
                             raftData.teamMembers.put(memberId, leaderId);
                         } catch (IllegalArgumentException e) {
-                            plugin.getLogger().warning("無效的團隊成員UUID: " + memberIdStr);
+                            plugin.getLogger().warning("无效的团队成员UUID: " + memberIdStr);
                         }
                     }
 
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("無效的隊長UUID: " + leaderIdStr);
+                    plugin.getLogger().warning("无效的队长UUID: " + leaderIdStr);
                 }
             }
         }
     }
 
     /**
-     * 定時保存數據
+     * 定时保存数据
      */
     public void startAutoSave() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            // 创建空的映射来替代等级相关数据
-            Map<UUID, Integer> emptyLevels = new HashMap<>();
-            Map<UUID, Double> emptyValues = new HashMap<>();
-            Map<UUID, Long> emptyScanTimes = new HashMap<>();
-
             saveAllData(
                     plugin.getRaftManager().getAllRafts(),
-                    emptyLevels,
                     plugin.getRaftManager().getAllRaftNames(),
-                    emptyValues,
-                    emptyScanTimes,
                     plugin.getRaftManager().getTeamManager()
             );
-        }, 20L * 60 * 5, 20L * 60 * 5); // 每5分鐘自動保存
+        }, 20L * 60 * 5, 20L * 60 * 5); // 每5分钟自动保存
     }
 
     /**
-     * 數據容器類
+     * 数据容器类
      */
     public static class RaftData {
         public Map<UUID, Location> playerRafts = new HashMap<>();
         public Map<UUID, String> raftNames = new HashMap<>();
-        public Map<UUID, UUID> teamMembers = new HashMap<>(); // 玩家ID -> 隊長ID
+        public Map<UUID, UUID> teamMembers = new HashMap<>(); // 玩家ID -> 队长ID
     }
 }

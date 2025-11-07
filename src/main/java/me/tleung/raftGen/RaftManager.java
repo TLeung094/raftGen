@@ -10,7 +10,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
-import java.util.logging.Level;
 
 public class RaftManager {
 
@@ -47,7 +46,7 @@ public class RaftManager {
 
         if (!enableSeparateWorld) {
             raftWorld = Bukkit.getWorld("world");
-            plugin.getLogger().info("使用主世界作為木筏世界");
+            plugin.getLogger().info("使用主世界作为木筏世界");
             if (raftWorld != null) {
                 setupWorldRules();
             }
@@ -56,12 +55,12 @@ public class RaftManager {
 
         raftWorld = Bukkit.getWorld(worldName);
         if (raftWorld != null) {
-            plugin.getLogger().info("木筏世界 '" + worldName + "' 已載入");
+            plugin.getLogger().info("木筏世界 '" + worldName + "' 已加载");
             setupWorldRules();
             return;
         }
 
-        plugin.getLogger().info("正在創建木筏世界: " + worldName);
+        plugin.getLogger().info("正在创建木筏世界: " + worldName);
 
         WorldCreator worldCreator = new WorldCreator(worldName);
         worldCreator.environment(World.Environment.NORMAL);
@@ -74,16 +73,16 @@ public class RaftManager {
             raftWorld = worldCreator.createWorld();
             if (raftWorld != null) {
                 setupWorldRules();
-                plugin.getLogger().info("木筏世界創建成功: " + worldName);
+                plugin.getLogger().info("木筏世界创建成功: " + worldName);
             } else {
-                plugin.getLogger().warning("木筏世界創建失敗，使用主世界");
+                plugin.getLogger().warning("木筏世界创建失败，使用主世界");
                 raftWorld = Bukkit.getWorld("world");
                 if (raftWorld != null) {
                     setupWorldRules();
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("創建木筏世界時發生錯誤: " + e.getMessage());
+            plugin.getLogger().warning("创建木筏世界时发生错误: " + e.getMessage());
             raftWorld = Bukkit.getWorld("world");
             if (raftWorld != null) {
                 setupWorldRules();
@@ -108,7 +107,7 @@ public class RaftManager {
     }
 
     /**
-     * 在指定位置創建木筏 (API使用)
+     * 在指定位置创建木筏 (API使用)
      */
     public boolean createRaftAtLocation(Player player, Location customLocation) {
         UUID playerId = player.getUniqueId();
@@ -116,17 +115,17 @@ public class RaftManager {
         UUID teamLeaderId = teamManager.getPlayerTeamLeader(playerId);
         if (teamLeaderId != null && !teamLeaderId.equals(playerId)) {
             if (playerRafts.containsKey(teamLeaderId)) {
-                player.sendMessage("§a你已加入隊伍，將使用隊長的木筏...");
+                player.sendMessage("§a你已加入队伍，将使用队长的木筏...");
                 teleportToRaft(player);
                 return true;
             } else {
-                player.sendMessage("§c你的隊長還沒有創建木筏! 請等待隊長創建");
+                player.sendMessage("§c你的队长还没有创建木筏! 请等待队长创建");
                 return false;
             }
         }
 
         if (playerRafts.containsKey(playerId)) {
-            player.sendMessage("§c你已經有一個木筏了! 使用 /raft home 傳送過去");
+            player.sendMessage("§c你已经有一个木筏了! 使用 /raft home 传送过去");
             return false;
         }
 
@@ -135,7 +134,7 @@ public class RaftManager {
         if (raftWorld == null) {
             initializeRaftWorld();
             if (raftWorld == null) {
-                player.sendMessage("§c木筏世界載入失敗，請聯繫管理員");
+                player.sendMessage("§c木筏世界加载失败，请联系管理员");
                 return false;
             }
         }
@@ -145,21 +144,21 @@ public class RaftManager {
 
         Location raftLocation;
         if (customLocation != null) {
-            // 使用自定義位置
+            // 使用自定义位置
             raftLocation = customLocation;
         } else {
-            // 自動生成位置
+            // 自动生成位置
             int raftIndex = playerRafts.size();
             int raftX = raftIndex * spacing;
             int raftZ = raftIndex * spacing;
             raftLocation = new Location(raftWorld, raftX, baseHeight, raftZ);
         }
 
-        // 調用創建事件
+        // 调用创建事件
         RaftCreateEvent event = new RaftCreateEvent(player, raftLocation);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
-            player.sendMessage("§c木筏創建被取消!");
+            player.sendMessage("§c木筏创建被取消!");
             return false;
         }
         raftLocation = event.getLocation();
@@ -172,18 +171,18 @@ public class RaftManager {
             for (UUID memberId : teamMembers) {
                 if (!memberId.equals(playerId)) {
                     playerRafts.put(memberId, raftLocation);
-                    raftNames.put(memberId, player.getName() + "的隊伍木筏");
+                    raftNames.put(memberId, player.getName() + "的队伍木筏");
                 }
             }
-            teamManager.broadcastToTeam(playerId, "§a隊長已創建隊伍木筏! 使用 §e/raft home §a傳送過去");
+            teamManager.broadcastToTeam(playerId, "§a队长已创建队伍木筏! 使用 §e/raft home §a传送过去");
         }
 
-        player.sendMessage("§e你的木筏位於獨立世界: §b" + raftWorld.getName());
+        player.sendMessage("§e你的木筏位于独立世界: §b" + raftWorld.getName());
         player.sendMessage("§e木筏位置: §aX: " + raftLocation.getBlockX() + " §aZ: " + raftLocation.getBlockZ());
 
         preGenerateRaftArea(raftLocation);
 
-        // 使用 final 變量來解決內部類問題
+        // 使用 final 变量来解决内部类问题
         final Location finalRaftLocation = raftLocation;
         final int finalBaseHeight = baseHeight;
         final UUID finalPlayerId = playerId;
@@ -226,21 +225,21 @@ public class RaftManager {
                 safeTeleport(player, spawnLocation);
 
                 player.sendMessage("§a=== 你的木筏已生成完成! ===");
-                player.sendMessage("§6木筏名稱: §e" + raftNames.get(finalPlayerId));
+                player.sendMessage("§6木筏名称: §e" + raftNames.get(finalPlayerId));
                 player.sendMessage("§6世界: §b" + raftWorld.getName());
                 player.sendMessage("§6木筏大小: §e3x3 木筏");
-                player.sendMessage("§6海洋生態: §a" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用海洋生物生成" : "海洋生物生成待處理"));
+                player.sendMessage("§6海洋生态: §a" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已启用海洋生物生成" : "海洋生物生成待处理"));
 
                 if (teamManager.isTeamLeader(finalPlayerId)) {
-                    player.sendMessage("§6隊伍成員: §e" + (teamManager.getTeamMembers(finalPlayerId).size()) + " 人");
+                    player.sendMessage("§6队伍成员: §e" + (teamManager.getTeamMembers(finalPlayerId).size()) + " 人");
                 }
 
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                 player.spawnParticle(Particle.HEART, player.getLocation(), 10);
 
-                plugin.getLogger().info("為玩家 " + player.getName() + " 生成木筏於: " + finalRaftLocation.getBlockX() + ", " + finalRaftLocation.getBlockZ());
+                plugin.getLogger().info("为玩家 " + player.getName() + " 生成木筏于: " + finalRaftLocation.getBlockX() + ", " + finalRaftLocation.getBlockZ());
 
-                // 創建木筏後保存數據
+                // 创建木筏后保存数据
                 saveData();
             }
         }.runTask(plugin);
@@ -269,7 +268,7 @@ public class RaftManager {
                 Block block = world.getBlockAt(blockX, baseHeight, blockZ);
                 if (block.getType() == Material.WATER || block.getType() == Material.AIR) {
                     block.setType(Material.OAK_PLANKS);
-                    plugin.getLogger().info("設置木筏方块: " + blockX + ", " + baseHeight + ", " + blockZ);
+                    plugin.getLogger().info("设置木筏方块: " + blockX + ", " + baseHeight + ", " + blockZ);
                 }
 
                 // 清除木筏上方的方块（确保是空气）
@@ -337,7 +336,7 @@ public class RaftManager {
         int centerX = center.getBlockX();
         int centerZ = center.getBlockZ();
 
-        // 在更大的範圍內預生成區塊 (5x5區域)
+        // 在更大的范围内预生成区块 (5x5区域)
         for (int x = -2; x <= 2; x++) {
             for (int z = -2; z <= 2; z++) {
                 int chunkX = (centerX + x) >> 4;
@@ -402,9 +401,9 @@ public class RaftManager {
 
         giveTemporaryFallProtection(player);
         player.teleport(safeLocation);
-        player.sendMessage("§a安全傳送完成!");
+        player.sendMessage("§a安全传送完成!");
 
-        // 二次檢查，確保玩家站在安全位置
+        // 二次检查，确保玩家站在安全位置
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -415,12 +414,12 @@ public class RaftManager {
                         currentLoc.getBlockZ()
                 );
 
-                // 如果下方不是木筏，調整位置
+                // 如果下方不是木筏，调整位置
                 if (belowBlock.getType() != Material.OAK_PLANKS) {
                     Location adjustedLoc = findSafeRaftLocation(currentLoc);
                     player.teleport(adjustedLoc);
                     player.setFallDistance(0f);
-                    player.sendMessage("§e位置已調整至安全木筏區域");
+                    player.sendMessage("§e位置已调整至安全木筏区域");
                 }
                 player.setFallDistance(0f);
             }
@@ -428,14 +427,14 @@ public class RaftManager {
     }
 
     /**
-     * 確保木筏位置安全
+     * 确保木筏位置安全
      */
     private Location ensureSafeRaftLocation(Location targetLocation) {
         World world = targetLocation.getWorld();
         int x = targetLocation.getBlockX();
         int z = targetLocation.getBlockZ();
 
-        // 在木筏中心3x3區域內尋找安全位置
+        // 在木筏中心3x3区域内寻找安全位置
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 int checkX = x + dx;
@@ -445,7 +444,7 @@ public class RaftManager {
                 Block feetBlock = world.getBlockAt(checkX, 63, checkZ);
                 Block headBlock = world.getBlockAt(checkX, 64, checkZ);
 
-                // 檢查是否在木筏上且有足夠的空間
+                // 检查是否在木筏上且有足够的空间
                 if (standBlock.getType() == Material.OAK_PLANKS &&
                         feetBlock.getType() == Material.AIR &&
                         headBlock.getType() == Material.AIR) {
@@ -454,7 +453,7 @@ public class RaftManager {
             }
         }
 
-        // 如果沒有找到理想位置，強制生成木筏並返回中心
+        // 如果没有找到理想位置，强制生成木筏并返回中心
         world.getBlockAt(x, 62, z).setType(Material.OAK_PLANKS);
         world.getBlockAt(x, 63, z).setType(Material.AIR);
         world.getBlockAt(x, 64, z).setType(Material.AIR);
@@ -463,14 +462,14 @@ public class RaftManager {
     }
 
     /**
-     * 尋找安全木筏位置
+     * 寻找安全木筏位置
      */
     private Location findSafeRaftLocation(Location currentLoc) {
         World world = currentLoc.getWorld();
         int x = currentLoc.getBlockX();
         int z = currentLoc.getBlockZ();
 
-        // 在周圍尋找木筏方塊
+        // 在周围寻找木筏方块
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 Block block = world.getBlockAt(x + dx, 62, z + dz);
@@ -518,7 +517,7 @@ public class RaftManager {
         UUID targetPlayerId = (teamLeaderId != null) ? teamLeaderId : playerId;
 
         if (!playerRafts.containsKey(targetPlayerId)) {
-            player.sendMessage("§c你還沒有木筏! 使用 /raft create 創建一個");
+            player.sendMessage("§c你还没有木筏! 使用 /raft create 创建一个");
             return;
         }
 
@@ -527,7 +526,7 @@ public class RaftManager {
         // 直接使用 63 生成玩家
         Location spawnLocation = new Location(raftWorld, raftLoc.getX() + 0.5, 63, raftLoc.getZ() + 0.5);
 
-        player.sendMessage("§e正在傳送到木筏世界: §b" + raftLoc.getWorld().getName());
+        player.sendMessage("§e正在传送到木筏世界: §b" + raftLoc.getWorld().getName());
         preloadChunks(raftLoc);
 
         Chunk chunk = spawnLocation.getChunk();
@@ -541,9 +540,9 @@ public class RaftManager {
         safeTeleport(player, spawnLocation);
 
         if (teamLeaderId != null && !teamLeaderId.equals(playerId)) {
-            player.sendMessage("§a已傳送到隊伍木筏!");
+            player.sendMessage("§a已传送到队伍木筏!");
         } else {
-            player.sendMessage("§a已傳送到你的木筏!");
+            player.sendMessage("§a已传送到你的木筏!");
         }
 
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
@@ -554,14 +553,14 @@ public class RaftManager {
 
         UUID teamLeaderId = teamManager.getPlayerTeamLeader(playerId);
         if (teamLeaderId != null && !teamLeaderId.equals(playerId)) {
-            player.sendMessage("§c只有隊長可以重置木筏!");
+            player.sendMessage("§c只有队长可以重置木筏!");
             return;
         }
 
         UUID targetPlayerId = (teamLeaderId != null) ? teamLeaderId : playerId;
 
         if (!playerRafts.containsKey(targetPlayerId)) {
-            player.sendMessage("§c你還沒有木筏!");
+            player.sendMessage("§c你还没有木筏!");
             return;
         }
 
@@ -569,7 +568,7 @@ public class RaftManager {
         Location raftLoc = playerRafts.get(targetPlayerId);
         preloadChunks(raftLoc);
 
-        // 使用 final 變量
+        // 使用 final 变量
         final UUID finalPlayerId = playerId;
         final Location finalRaftLoc = raftLoc;
 
@@ -591,16 +590,16 @@ public class RaftManager {
                 }
 
                 player.sendMessage("§a木筏重置完成!");
-                player.sendMessage("§6木筏已恢復為純淨地形");
-                player.sendMessage("§6海洋生態: §e" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已重新生成" : "生成待處理"));
+                player.sendMessage("§6木筏已恢复为纯净地形");
+                player.sendMessage("§6海洋生态: §e" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已重新生成" : "生成待处理"));
 
                 if (teamManager.isTeamLeader(finalPlayerId)) {
-                    teamManager.broadcastToTeam(finalPlayerId, "§a隊伍木筏已重置!");
+                    teamManager.broadcastToTeam(finalPlayerId, "§a队伍木筏已重置!");
                 }
 
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
 
-                // 重置後保存數據
+                // 重置后保存数据
                 saveData();
             }
         }.runTask(plugin);
@@ -613,35 +612,35 @@ public class RaftManager {
         UUID targetPlayerId = (teamLeaderId != null) ? teamLeaderId : playerId;
 
         if (!playerRafts.containsKey(targetPlayerId)) {
-            player.sendMessage("§c你還沒有木筏! 使用 /raft create 創建一個");
+            player.sendMessage("§c你还没有木筏! 使用 /raft create 创建一个");
             return;
         }
 
         Location raftLoc = playerRafts.get(targetPlayerId);
-        player.sendMessage("§6=== 木筏資訊 ===");
-        player.sendMessage("§a名稱: §f" + raftNames.get(targetPlayerId));
+        player.sendMessage("§6=== 木筏信息 ===");
+        player.sendMessage("§a名称: §f" + raftNames.get(targetPlayerId));
         player.sendMessage("§a位置: §f" + formatLocation(raftLoc));
         player.sendMessage("§a世界: §b" + raftLoc.getWorld().getName());
         player.sendMessage("§a大小: §f3x3 木筏");
-        player.sendMessage("§a海洋生態: §" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "a已啟用" : "c未啟用"));
+        player.sendMessage("§a海洋生态: §" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "a已启用" : "c未启用"));
 
         if (teamLeaderId != null) {
             Player leader = Bukkit.getPlayer(teamLeaderId);
             String leaderName = leader != null ? leader.getName() : "未知";
             if (teamLeaderId.equals(playerId)) {
-                player.sendMessage("§a隊伍: §f你是隊長，隊伍成員: " + teamManager.getTeamMembers(teamLeaderId).size() + " 人");
+                player.sendMessage("§a队伍: §f你是队长，队伍成员: " + teamManager.getTeamMembers(teamLeaderId).size() + " 人");
             } else {
-                player.sendMessage("§a隊伍: §f你屬於 " + leaderName + " 的隊伍");
+                player.sendMessage("§a队伍: §f你属于 " + leaderName + " 的队伍");
             }
         }
     }
 
     public void deleteRaft(Player player, String targetPlayerName) {
-        // 調用刪除事件
+        // 调用删除事件
         RaftDeleteEvent event = new RaftDeleteEvent(player);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
-            player.sendMessage("§c木筏刪除被取消!");
+            player.sendMessage("§c木筏删除被取消!");
             return;
         }
 
@@ -649,7 +648,7 @@ public class RaftManager {
 
         if (targetPlayerName != null) {
             if (!player.hasPermission("raftgen.delete.others")) {
-                player.sendMessage("§c你沒有權限刪除其他玩家的木筏!");
+                player.sendMessage("§c你没有权限删除其他玩家的木筏!");
                 return;
             }
 
@@ -661,7 +660,7 @@ public class RaftManager {
 
             UUID targetPlayerId = targetPlayer.getUniqueId();
             if (!playerRafts.containsKey(targetPlayerId)) {
-                player.sendMessage("§c玩家 " + targetPlayerName + " 沒有木筏!");
+                player.sendMessage("§c玩家 " + targetPlayerName + " 没有木筏!");
                 return;
             }
 
@@ -673,26 +672,26 @@ public class RaftManager {
             playerRafts.remove(targetPlayerId);
             raftNames.remove(targetPlayerId);
 
-            player.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
+            player.sendMessage("§a已成功删除玩家 " + targetPlayerName + " 的木筏!");
             if (targetPlayer.isOnline()) {
-                targetPlayer.sendMessage("§c你的木筏已被管理員刪除!");
+                targetPlayer.sendMessage("§c你的木筏已被管理员删除!");
             }
 
-            // 刪除後保存數據
+            // 删除后保存数据
             saveData();
             return;
         }
 
         UUID teamLeaderId = teamManager.getPlayerTeamLeader(playerId);
         if (teamLeaderId != null && !teamLeaderId.equals(playerId)) {
-            player.sendMessage("§c只有隊長可以刪除木筏!");
+            player.sendMessage("§c只有队长可以删除木筏!");
             return;
         }
 
         UUID targetPlayerId = (teamLeaderId != null) ? teamLeaderId : playerId;
 
         if (!playerRafts.containsKey(targetPlayerId)) {
-            player.sendMessage("§c你還沒有木筏!");
+            player.sendMessage("§c你还没有木筏!");
             return;
         }
 
@@ -709,14 +708,14 @@ public class RaftManager {
         }
 
         deleteConfirmations.put(playerId, currentTime);
-        player.sendMessage("§c⚠ 警告! 你即將刪除你的木筏!");
-        player.sendMessage("§c所有木筏上的建築和物品將會永久消失!");
+        player.sendMessage("§c⚠ 警告! 你即将删除你的木筏!");
+        player.sendMessage("§c所有木筏上的建筑和物品将会永久消失!");
 
         if (teamManager.isTeamLeader(playerId)) {
-            player.sendMessage("§c這將影響所有隊伍成員!");
+            player.sendMessage("§c这将影响所有队伍成员!");
         }
 
-        player.sendMessage("§c請在 30 秒內使用 §e/raft delete confirm §c來確認刪除!");
+        player.sendMessage("§c请在 30 秒内使用 §e/raft delete confirm §c来确认删除!");
         player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
     }
 
@@ -724,7 +723,7 @@ public class RaftManager {
         UUID playerId = player.getUniqueId();
 
         if (!deleteConfirmations.containsKey(playerId)) {
-            player.sendMessage("§c沒有待確認的刪除操作! 請先使用 /raft delete");
+            player.sendMessage("§c没有待确认的删除操作! 请先使用 /raft delete");
             return;
         }
 
@@ -732,14 +731,14 @@ public class RaftManager {
         long currentTime = System.currentTimeMillis();
 
         if (currentTime - lastConfirmTime > 30000) {
-            player.sendMessage("§c確認時間已過期! 請重新使用 /raft delete");
+            player.sendMessage("§c确认时间已过期! 请重新使用 /raft delete");
             deleteConfirmations.remove(playerId);
             return;
         }
 
         UUID teamLeaderId = teamManager.getPlayerTeamLeader(playerId);
         if (teamLeaderId != null && !teamLeaderId.equals(playerId)) {
-            player.sendMessage("§c只有隊長可以刪除木筏!");
+            player.sendMessage("§c只有队长可以删除木筏!");
             deleteConfirmations.remove(playerId);
             return;
         }
@@ -747,14 +746,14 @@ public class RaftManager {
         UUID targetPlayerId = (teamLeaderId != null) ? teamLeaderId : playerId;
 
         if (!playerRafts.containsKey(targetPlayerId)) {
-            player.sendMessage("§c你還沒有木筏!");
+            player.sendMessage("§c你还没有木筏!");
             deleteConfirmations.remove(playerId);
             return;
         }
 
-        player.sendMessage("§e正在刪除你的木筏...");
+        player.sendMessage("§e正在删除你的木筏...");
 
-        // 使用 final 變量
+        // 使用 final 变量
         final UUID finalPlayerId = playerId;
         final UUID finalTargetPlayerId = targetPlayerId;
 
@@ -762,14 +761,14 @@ public class RaftManager {
             @Override
             public void run() {
                 Location raftLoc = playerRafts.get(finalTargetPlayerId);
-                plugin.getLogger().info("開始刪除木筏，位置: " + raftLoc);
+                plugin.getLogger().info("开始删除木筏，位置: " + raftLoc);
 
                 boolean raftExistsBefore = isRaftStillExists(finalTargetPlayerId);
                 if (raftExistsBefore) {
-                    plugin.getLogger().info("刪除前檢測到木筏仍然存在，開始清除...");
+                    plugin.getLogger().info("删除前检测到木筏仍然存在，开始清除...");
                 }
 
-                // 先傳送玩家
+                // 先传送玩家
                 teleportToSpawn(player);
 
                 if (teamManager.isTeamLeader(finalPlayerId)) {
@@ -782,29 +781,29 @@ public class RaftManager {
                     }
                 }
 
-                // 清除木筏區域
+                // 清除木筏区域
                 completelyClearRaftArea(finalTargetPlayerId);
 
-                // 等待一會後再次檢查和清除
+                // 等待一会后再次检查和清除
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        // 再次清除以確保完全清除
+                        // 再次清除以确保完全清除
                         completelyClearRaftArea(finalTargetPlayerId);
 
                         boolean raftExistsAfter = isRaftStillExists(finalTargetPlayerId);
                         if (raftExistsAfter) {
-                            plugin.getLogger().warning("刪除後木筏仍然存在，進行最終清除...");
+                            plugin.getLogger().warning("删除后木筏仍然存在，进行最终清除...");
                             completelyClearRaftArea(finalTargetPlayerId);
 
-                            // 強制重新載入區塊
+                            // 强制重新载入区块
                             World world = raftLoc.getWorld();
                             int chunkX = raftLoc.getBlockX() >> 4;
                             int chunkZ = raftLoc.getBlockZ() >> 4;
                             world.refreshChunk(chunkX, chunkZ);
                         }
 
-                        // 移除數據
+                        // 移除数据
                         if (teamManager.isTeamLeader(finalPlayerId)) {
                             Set<UUID> teamMembers = teamManager.getTeamMembers(finalPlayerId);
                             for (UUID memberId : teamMembers) {
@@ -812,26 +811,26 @@ public class RaftManager {
                                 raftNames.remove(memberId);
                                 deleteConfirmations.remove(memberId);
                             }
-                            teamManager.broadcastToTeam(finalPlayerId, "§c隊伍木筏已被隊長刪除!");
+                            teamManager.broadcastToTeam(finalPlayerId, "§c队伍木筏已被队长删除!");
                         } else {
                             playerRafts.remove(finalTargetPlayerId);
                             raftNames.remove(finalTargetPlayerId);
                             deleteConfirmations.remove(finalPlayerId);
                         }
 
-                        player.sendMessage("§a木筏刪除完成!");
+                        player.sendMessage("§a木筏删除完成!");
                         if (raftExistsAfter) {
-                            player.sendMessage("§6注意: 木筏區域可能需要重新載入區塊才能完全顯示清除效果");
+                            player.sendMessage("§6注意: 木筏区域可能需要重新载入区块才能完全显示清除效果");
                         } else {
-                            player.sendMessage("§6木筏區域已完全清除，恢復為海洋");
+                            player.sendMessage("§6木筏区域已完全清除，恢复为海洋");
                         }
-                        player.sendMessage("§6你可以使用 §a/raft create §6來創建一個新的木筏");
+                        player.sendMessage("§6你可以使用 §a/raft create §6来创建一个新的木筏");
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
 
-                        // 刪除後保存數據
+                        // 删除后保存数据
                         saveData();
                     }
-                }.runTaskLater(plugin, 20L); // 等待 1 秒後執行
+                }.runTaskLater(plugin, 20L); // 等待 1 秒后执行
             }
         }.runTask(plugin);
     }
@@ -846,9 +845,9 @@ public class RaftManager {
                     playerRafts.remove(playerId);
                     raftNames.remove(playerId);
 
-                    sender.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
+                    sender.sendMessage("§a已成功删除玩家 " + targetPlayerName + " 的木筏!");
 
-                    // 刪除後保存數據
+                    // 删除后保存数据
                     saveData();
                     return;
                 }
@@ -859,7 +858,7 @@ public class RaftManager {
 
         UUID targetPlayerId = targetPlayer.getUniqueId();
         if (!playerRafts.containsKey(targetPlayerId)) {
-            sender.sendMessage("§c玩家 " + targetPlayerName + " 沒有木筏!");
+            sender.sendMessage("§c玩家 " + targetPlayerName + " 没有木筏!");
             return;
         }
 
@@ -871,17 +870,17 @@ public class RaftManager {
         playerRafts.remove(targetPlayerId);
         raftNames.remove(targetPlayerId);
 
-        sender.sendMessage("§a已成功刪除玩家 " + targetPlayerName + " 的木筏!");
+        sender.sendMessage("§a已成功删除玩家 " + targetPlayerName + " 的木筏!");
         if (targetPlayer.isOnline()) {
-            targetPlayer.sendMessage("§c你的木筏已被管理員刪除!");
+            targetPlayer.sendMessage("§c你的木筏已被管理员删除!");
         }
 
-        // 刪除後保存數據
+        // 删除后保存数据
         saveData();
     }
 
     /**
-     * 強制刪除木筏 (API使用)
+     * 强制删除木筏 (API使用)
      */
     public void forceDeleteRaft(UUID playerId) {
         completelyClearRaftArea(playerId);
@@ -889,7 +888,7 @@ public class RaftManager {
         raftNames.remove(playerId);
         deleteConfirmations.remove(playerId);
 
-        // 刪除後保存數據
+        // 删除后保存数据
         saveData();
     }
 
@@ -897,13 +896,13 @@ public class RaftManager {
         UUID playerId = player.getUniqueId();
 
         if (!playerRafts.containsKey(playerId)) {
-            player.sendMessage("§c你還沒有木筏!");
+            player.sendMessage("§c你还没有木筏!");
             return;
         }
 
-        player.sendMessage("§e正在強制清除木筏區域...");
+        player.sendMessage("§e正在强制清除木筏区域...");
 
-        // 使用 final 變量
+        // 使用 final 变量
         final UUID finalPlayerId = playerId;
 
         new BukkitRunnable() {
@@ -915,10 +914,10 @@ public class RaftManager {
                 int chunkX = raftLoc.getBlockX() >> 4;
                 int chunkZ = raftLoc.getBlockZ() >> 4;
                 world.refreshChunk(chunkX, chunkZ);
-                player.sendMessage("§a強制清除完成!");
-                player.sendMessage("§6木筏區域已強制清除並重新載入");
+                player.sendMessage("§a强制清除完成!");
+                player.sendMessage("§6木筏区域已强制清除并重新载入");
 
-                // 清除後保存數據
+                // 清除后保存数据
                 saveData();
             }
         }.runTask(plugin);
@@ -967,24 +966,24 @@ public class RaftManager {
         int centerZ = raftLoc.getBlockZ();
         int baseHeight = 62;
 
-        // 檢查木筏核心區域是否有木筏方塊
+        // 检查木筏核心区域是否有木筏方块
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
                 Block block = world.getBlockAt(centerX + x, baseHeight, centerZ + z);
                 if (block.getType() == Material.OAK_PLANKS) {
-                    plugin.getLogger().warning("檢測到木筏方塊仍然存在: " + (centerX + x) + ", " + baseHeight + ", " + (centerZ + z));
+                    plugin.getLogger().warning("检测到木筏方块仍然存在: " + (centerX + x) + ", " + baseHeight + ", " + (centerZ + z));
                     return true;
                 }
             }
         }
 
-        // 檢查是否有其他殘留方塊
+        // 检查是否有其他残留方块
         for (int x = -7; x <= 7; x++) {
             for (int z = -7; z <= 7; z++) {
                 for (int y = baseHeight; y <= baseHeight + 5; y++) {
                     Block block = world.getBlockAt(centerX + x, y, centerZ + z);
                     if (block.getType() != Material.AIR && block.getType() != Material.WATER) {
-                        plugin.getLogger().warning("檢測到殘留方塊: " + (centerX + x) + ", " + y + ", " + (centerZ + z) + " - " + block.getType());
+                        plugin.getLogger().warning("检测到残留方块: " + (centerX + x) + ", " + y + ", " + (centerZ + z) + " - " + block.getType());
                         return true;
                     }
                 }
@@ -997,7 +996,7 @@ public class RaftManager {
     private void teleportToSpawn(Player player) {
         Location spawnLocation = getSpawnLocation();
         player.teleport(spawnLocation);
-        player.sendMessage("§e你已被傳送到重生點");
+        player.sendMessage("§e你已被传送到重生点");
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
     }
 
@@ -1035,21 +1034,21 @@ public class RaftManager {
 
     public void listAllRafts(CommandSender sender) {
         if (!sender.hasPermission("raftgen.admin")) {
-            sender.sendMessage("§c你沒有權限使用此指令!");
+            sender.sendMessage("§c你没有权限使用此指令!");
             return;
         }
 
         if (playerRafts.isEmpty()) {
-            sender.sendMessage("§6目前沒有任何木筏記錄");
+            sender.sendMessage("§6目前没有任何木筏记录");
             return;
         }
 
-        sender.sendMessage("§6=== 所有木筏記錄 ===");
-        sender.sendMessage("§a總數: §f" + playerRafts.size());
-        sender.sendMessage("§a木筏間距: §f200 格");
+        sender.sendMessage("§6=== 所有木筏记录 ===");
+        sender.sendMessage("§a总数: §f" + playerRafts.size());
+        sender.sendMessage("§a木筏间距: §f200 格");
         sender.sendMessage("§a木筏大小: §f3x3 木筏");
-        sender.sendMessage("§a木筏類型: §f純淨浮島，無裝飾");
-        sender.sendMessage("§a海洋生態: §f" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用海洋生物生成" : "海洋生物生成未啟用"));
+        sender.sendMessage("§a木筏类型: §f纯净浮岛，无装饰");
+        sender.sendMessage("§a海洋生态: §f" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已启用海洋生物生成" : "海洋生物生成未启用"));
         sender.sendMessage("");
 
         for (UUID playerId : playerRafts.keySet()) {
@@ -1063,7 +1062,7 @@ public class RaftManager {
                 sender.sendMessage("  §7位置: §f" + formatLocation(loc));
 
                 if (teamManager.isTeamLeader(playerId)) {
-                    sender.sendMessage("  §7隊伍: §f隊長，成員: " + teamManager.getTeamMembers(playerId).size() + " 人");
+                    sender.sendMessage("  §7队伍: §f队长，成员: " + teamManager.getTeamMembers(playerId).size() + " 人");
                 }
                 sender.sendMessage("");
             }
@@ -1071,19 +1070,19 @@ public class RaftManager {
     }
 
     public void reloadRaftWorld(Player player) {
-        player.sendMessage("§e正在重新載入木筏世界...");
+        player.sendMessage("§e正在重新加载木筏世界...");
         if (raftWorld != null) {
             String worldName = raftWorld.getName();
             boolean success = Bukkit.unloadWorld(raftWorld, true);
             if (success) {
-                player.sendMessage("§a成功卸載世界: " + worldName);
+                player.sendMessage("§a成功卸载世界: " + worldName);
             } else {
-                player.sendMessage("§c卸載世界失敗: " + worldName);
+                player.sendMessage("§c卸载世界失败: " + worldName);
             }
             raftWorld = null;
         }
         initializeRaftWorld();
-        player.sendMessage("§a木筏世界重新載入完成: " + (raftWorld != null ? raftWorld.getName() : "失敗"));
+        player.sendMessage("§a木筏世界重新加载完成: " + (raftWorld != null ? raftWorld.getName() : "失败"));
 
         // 重新启动海洋生物系统
         if (marineLifeManager != null) {
@@ -1148,10 +1147,10 @@ public class RaftManager {
                 material == Material.OAK_PLANKS;
     }
 
-    // === 數據持久化方法 ===
+    // === 数据持久化方法 ===
 
     /**
-     * 加載保存的數據
+     * 加载保存的数据
      */
     public void loadSavedData() {
         DataManager.RaftData raftData = dataManager.loadAllData();
@@ -1159,24 +1158,19 @@ public class RaftManager {
         this.playerRafts.putAll(raftData.playerRafts);
         this.raftNames.putAll(raftData.raftNames);
 
-        // 加載團隊數據到 TeamManager
+        // 加载团队数据到 TeamManager
         teamManager.loadTeamData(raftData.teamMembers);
     }
 
     /**
-     * 保存當前數據
+     * 保存当前数据
      */
     public void saveData() {
-        // 创建空的映射来替代等级相关数据
-        Map<UUID, Integer> emptyLevels = new HashMap<>();
-        Map<UUID, Double> emptyValues = new HashMap<>();
-        Map<UUID, Long> emptyScanTimes = new HashMap<>();
-
-        dataManager.saveAllData(playerRafts, emptyLevels, raftNames, emptyValues, emptyScanTimes, teamManager);
+        dataManager.saveAllData(playerRafts, raftNames, teamManager);
     }
 
     /**
-     * 啟動自動保存
+     * 启动自动保存
      */
     public void startAutoSave() {
         dataManager.startAutoSave();
@@ -1185,40 +1179,40 @@ public class RaftManager {
     // === API 支持方法 ===
 
     /**
-     * 獲取所有木筏數據 (API使用)
+     * 获取所有木筏数据 (API使用)
      */
     public Map<UUID, Location> getAllRafts() {
         return new HashMap<>(playerRafts);
     }
 
     /**
-     * 獲取木筏名稱 (API使用)
+     * 获取木筏名称 (API使用)
      */
     public String getRaftName(UUID playerId) {
         return raftNames.getOrDefault(playerId, "未知木筏");
     }
 
     /**
-     * 設置木筏名稱 (API使用)
+     * 设置木筏名称 (API使用)
      */
     public void setRaftName(UUID playerId, String name) {
         if (playerRafts.containsKey(playerId)) {
             raftNames.put(playerId, name);
-            saveData(); // 設置名稱後保存數據
+            saveData(); // 设置名称后保存数据
         }
     }
 
     /**
-     * 獲取木筏名稱映射 (API使用)
+     * 获取木筏名称映射 (API使用)
      */
     public Map<UUID, String> getAllRaftNames() {
         return new HashMap<>(raftNames);
     }
 
-    // === 海洋生物系統方法 ===
+    // === 海洋生物系统方法 ===
 
     /**
-     * 獲取海洋生物管理器
+     * 获取海洋生物管理器
      */
     public MarineLifeManager getMarineLifeManager() {
         return marineLifeManager;
