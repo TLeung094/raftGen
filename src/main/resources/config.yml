@@ -1,254 +1,291 @@
-# RaftGen 木筏插件配置文件
-# 版本: 1.0.0
+# RaftGen 木筏生成插件配置文件
+# 插件版本: 1.0.0
 
-# 木筏設置
+# 木筏基礎設定
 raft:
+  # 是否啟用獨立世界
+  enable-separate-world: true
   # 木筏世界名稱
   world-name: "raft_world"
-  # 是否啟用獨立世界 (true: 獨立世界, false: 使用主世界)
-  enable-separate-world: true
-  # 確保世界生成在溫暖區域的設置
-  warm-biome-only: true
-  # 木筏間距 (每個木筏之間的距離)
+  # 木筏間距（格）
   spacing: 200
-  # 木筏半徑 (木筏的大小)
-  radius: 5
-  # 木筏基礎高度 (傳送點高度)
-  base-height: 80
+  # 木筏大小（3x3 基礎木筏）
+  size: 3
   # 海平面高度
   sea-level: 62
-  # 世界環境 (NORMAL, NETHER, THE_END)
-  environment: "NORMAL"
-  # 是否生成結構 (村莊、神廟等)
-  generate-structures: false
-  # 是否生成怪物
-  spawn-monsters: false
+  # 自動保存間隔（分鐘）
+  auto-save-interval: 5
 
-# 木筏細節設置
-raft-details:
-  # 是否啟用植物生成
-  enable-plants: false
-  # 是否啟用額外樹木
-  enable-extra-trees: false
-  # 是否啟用路徑
-  enable-paths: false
-  # 是否啟用隱藏寶箱
-  enable-hidden-chests: false
-  # 是否啟用裝飾
-  enable-decorations: false
-
-# 海洋生物设置
+# 海洋生物系統設定
 marine-life:
+  # 是否啟用海洋生物生成
   enabled: true
-  spawn-interval: 200
+  # 生成間隔（tick，20 tick = 1秒）
+  spawn-interval: 300
+  # 每個玩家附近最大海洋生物數量
   max-near-player: 10
-  spawn-chance: 0.3
+  # 生成半徑
+  spawn-radius: 30
+  # 淺水區域生物生成機率
+  shallow-water-spawn-chance: 0.3
+  # 中等深度生物生成機率
+  medium-depth-spawn-chance: 0.25
+  # 深水區域生物生成機率
+  deep-water-spawn-chance: 0.2
 
-# 團隊設置
+  # 各類型海洋生物生成權重
+  spawn-weights:
+    cod: 50        # 鱈魚
+    salmon: 20     # 鮭魚
+    pufferfish: 15 # 河豚
+    tropical-fish: 15 # 熱帶魚
+    squid: 30      # 魷魚
+    glow-squid: 25 # 發光魷魚
+    dolphin: 10    # 海豚
+
+# 鯊魚事件系統設定
+shark-event:
+  # 是否啟用鯊魚事件
+  enabled: true
+  # MythicMobs 中的鯊魚名稱
+  shark-mob-name: "Shark"
+  # 重生時間（秒）
+  respawn-time: 300
+  # 巡邏半徑
+  patrol-radius: 15.0
+  # 攻擊範圍
+  attack-range: 8.0
+  # 偵測範圍
+  detection-range: 20.0
+  # 攻擊傷害
+  attack-damage: 6.0
+  # 鯊魚生命值
+  shark-health: 150
+  # 移動速度
+  movement-speed: 0.8
+  # 攻擊冷卻時間（秒）
+  attack-cooldown: 3.0
+
+  # 鯊魚掉落物設定
+  drops:
+    # 海磷碎片
+    prismarine-shard:
+      min-amount: 3
+      max-amount: 5
+      chance: 1.0
+    # 鸚鵡螺殼
+    nautilus-shell:
+      min-amount: 1
+      max-amount: 2
+      chance: 1.0
+    # 鱈魚
+    cod:
+      min-amount: 2
+      max-amount: 4
+      chance: 1.0
+    # 海洋之心（稀有）
+    heart-of-the-sea:
+      min-amount: 1
+      max-amount: 1
+      chance: 0.2
+    # 三叉戟（非常稀有）
+    trident:
+      min-amount: 1
+      max-amount: 1
+      chance: 0.1
+    # 經驗值
+    experience:
+      min-amount: 50
+      max-amount: 80
+
+# 團隊系統設定
 team:
-  # 邀請過期時間 (秒)
-  invite-expire-time: 60
-  # 最大隊伍人數 (0 = 無限制)
-  max-team-size: 0
-  # 是否允許跨世界傳送
-  allow-cross-world-teleport: true
-  # 隊伍聊天前綴
-  chat-prefix: "&6[隊伍] &f"
+  # 最大團隊人數（包括隊長）
+  max-members: 5
+  # 邀請過期時間（秒）
+  invite-expiry: 60
+  # 是否允許團隊間傳送
+  allow-teleport: true
+  # 團隊共享建築權限
+  shared-building: true
 
-# 傳送設置
-teleport:
-  # 傳送冷卻時間 (秒)
-  cooldown: 10
-  # 傳送延遲 (秒)
-  delay: 3
-  # 是否在傳送時顯示粒子效果
-  show-particles: true
-  # 是否在傳送時播放音效
-  play-sounds: true
+# 世界生成設定
+world-generation:
+  # 地形噪聲設定
+  terrain-noise:
+    # 大陸噪聲頻率
+    continent-frequency: 0.00002
+    # 地形噪聲頻率
+    terrain-frequency: 0.0005
+    # 細節噪聲頻率
+    detail-frequency: 0.01
+    # 噪聲octaves數量
+    octaves: 4
+    # 噪聲lacunarity
+    lacunarity: 2.0
+    # 噪聲gain
+    gain: 0.6
 
-# 重置設置
-reset:
-  # 重置冷卻時間 (秒)
-  cooldown: 300
-  # 重置確認時間 (秒)
-  confirm-time: 30
-  # 重置時是否保留物品
-  keep-inventory: false
-  # 重置時是否保留經驗
-  keep-experience: false
+  # 海底高度範圍
+  sea-bed:
+    min-height: 5
+    max-height: 45
+    base-height: 15
 
-# 刪除設置
-delete:
-  # 刪除確認時間 (秒)
-  confirm-time: 30
-  # 刪除後冷卻時間 (秒)
-  cooldown: 60
-  # 是否發送刪除警告
-  send-warnings: true
+  # 海底材料分佈
+  materials:
+    # 深海材料
+    deep-materials:
+      deepslate: 70
+      deepslate_diamond_ore: 5
+      deepslate_iron_ore: 8
+      tuff: 17
 
-# 世界生成器設置
-world-generator:
-  # 海底基礎高度
-  sea-bed-height: 30
-  # 海底最低高度
-  min-sea-bed-height: 25
-  # 海底最高高度
-  max-sea-bed-height: 35
-  # 木筏邊緣高度
-  raft-edge-height: 65
-  # 木筏中心高度
-  raft-center-height: 70
-  # 地形噪聲頻率
-  noise-frequency: 0.1
-  # 地形噪聲幅度
-  noise-amplitude: 2.0
+    # 中層材料
+    layer-materials:
+      stone: 60
+      andesite: 15
+      coal_ore: 10
+      iron_ore: 10
+      gravel: 5
 
-# 消息設置
+    # 表面材料
+    surface-materials:
+      sand: 50
+      gravel: 25
+      clay: 20
+      stone: 5
+
+  # 海洋特徵生成
+  ocean-features:
+    # 珊瑚生成機率
+    coral-chance: 0.15
+    # 海草生成機率
+    seagrass-chance: 0.4
+    # 海帶生成機率
+    kelp-chance: 0.2
+    # 海泡菜生成機率
+    sea-pickle-chance: 0.1
+
+# 權限設定
+permissions:
+  # 基礎權限
+  basic:
+    create: "raftgen.create"
+    home: "raftgen.home"
+    reset: "raftgen.reset"
+    delete-self: "raftgen.delete.self"
+    info: "raftgen.info"
+    team: "raftgen.team"
+
+  # 管理員權限
+  admin:
+    delete-others: "raftgen.delete.others"
+    list: "raftgen.admin"
+    reload: "raftgen.admin"
+    marine: "raftgen.admin"
+    shark: "raftgen.admin"
+    diagnose: "raftgen.admin"
+
+  # 團隊權限
+  team-specific:
+    create-team: "raftgen.team.create"
+    invite: "raftgen.team.invite"
+    kick: "raftgen.team.kick"
+    disband: "raftgen.team.disband"
+    transfer: "raftgen.team.transfer"
+
+# 訊息配置
 messages:
-  # 是否啟用彩色消息
-  enable-colors: true
-  # 消息前綴
-  prefix: "&6[RaftGen] &f"
-  # 成功消息顏色
-  success-color: "&a"
-  # 錯誤消息顏色
-  error-color: "&c"
-  # 信息消息顏色
-  info-color: "&e"
-  # 警告消息顏色
-  warning-color: "&6"
+  # 成功訊息
+  success:
+    raft-created: "&a你的木筏已創建完成！位於獨立世界: &b{world}&a，位置: &eX: {x} Z: {z}"
+    raft-reset: "&a木筏重置完成！已恢復為純淨地形"
+    raft-deleted: "&a木筏刪除完成！區域已恢復為海洋"
+    teleported: "&a已傳送到你的木筏！"
+    team-created: "&a隊伍創建成功！你是隊長"
+    team-joined: "&a你已加入 {leader} 的隊伍"
 
-# 數據庫設置 (未來功能)
-database:
-  # 數據庫類型 (SQLite, MySQL)
-  type: "SQLite"
-  # SQLite 文件名
-  sqlite-file: "rafts.db"
-  # MySQL 設置
-  mysql:
-    host: "localhost"
-    port: 3306
-    database: "raftgen"
-    username: "username"
-    password: "password"
-    table-prefix: "raftgen_"
+  # 錯誤訊息
+  error:
+    already-have-raft: "&c你已經有一個木筏了！使用 /raft home 傳送過去"
+    no-raft: "&c你還沒有木筏！使用 /raft create 創建一個"
+    no-permission: "&c你沒有權限使用此指令！"
+    player-offline: "&c玩家不在線或不存在！"
+    team-full: "&c隊伍已滿員！"
+    in-team: "&c你已經在一個隊伍中了！"
 
-# 性能設置
+  # 警告訊息
+  warning:
+    delete-confirm: "&c⚠ 警告！你即將刪除你的木筏！所有建築和物品將會永久消失！請在30秒內使用 &e/raft delete confirm &c來確認刪除！"
+    shark-spawn: "&3🦈 一條鯊魚出現在木筏周圍！小心！"
+    shark-attack: "&c🦈 鯊魚攻擊了你！"
+    shark-defeated: "&6🎣 鯊魚已被擊敗！將在 {time} 秒後重生"
+
+  # 資訊訊息
+  info:
+    raft-info: |
+      &6=== 木筏資訊 ===
+      &a名稱: &f{name}
+      &a位置: &fX: {x} Y: {y} Z: {z}
+      &a世界: &b{world}
+      &a大小: &f3x3 木筏
+      &a海洋生態: {marine_status}
+      &a鯊魚事件: {shark_status}
+    team-info: |
+      &6=== 隊伍資訊 ===
+      &a隊長: &e{leader}
+      &a隊員數量: &e{member_count}
+      &a隊員列表: &f{members}
+
+# 效能優化設定
 performance:
-  # 自動清理間隔 (分鐘)
-  cleanup-interval: 10
-  # 最大日誌文件大小 (MB)
-  max-log-size: 10
-  # 是否啟用異步加載
-  async-loading: true
-  # 區塊預加載範圍
-  chunk-preload-range: 1
+  # 區塊預生成範圍（以木筏為中心的區塊半徑）
+  pregen-chunk-radius: 2
+  # 清理間隔（tick）
+  cleanup-interval: 6000
+  # 最大同時加載的木筏數量
+  max-loaded-rafts: 50
+  # 自動卸載未使用區塊
+  auto-unload-chunks: true
+  # 實體清理範圍
+  entity-clear-radius: 100
+
+# 除錯設定
+debug:
+  # 啟用除錯模式
+  enabled: false
+  # 除錯日誌級別
+  log-level: "INFO"
+  # 記錄生成資訊
+  log-generation: true
+  # 記錄傳送資訊
+  log-teleport: false
+  # 記錄團隊活動
+  log-team-activity: true
+
+# API設定
+api:
+  # 是否啟用API
+  enabled: true
+  # API版本
+  version: "1.0"
+  # 事件廣播
+  broadcast-events: true
+  # 可用事件列表
+  available-events:
+    - "RaftCreateEvent"
+    - "RaftDeleteEvent"
+    - "RaftResetEvent"
 
 # 更新檢查
 update-check:
-  # 是否啟用更新檢查
+  # 是否檢查更新
   enabled: true
-  # 檢查間隔 (小時)
+  # 檢查間隔（小時）
   interval: 24
-  # 是否下載自動更新
-  auto-download: false
-
-# 調試設置
-debug:
-  # 是否啟用調試模式
-  enabled: false
-  # 詳細日誌級別
-  verbose-logging: false
-  # 性能監控
-  performance-monitoring: false
-
-# 語言設置
-language:
-  # 語言文件
-  # 支持: zh_TW (繁體中文), en_US (英文)
-  locale: "zh_TW"
-  # 是否啟用自動語言檢測
-  auto-detect: true
-
-# 保護設置
-protection:
-  # 是否啟用木筏保護
-  enabled: true
-  # 保護半徑 (格)
-  radius: 10
-  # 是否防止PVP
-  prevent-pvp: true
-  # 是否防止怪物生成
-  prevent-monster-spawn: true
-  # 是否防止爆炸破壞
-  prevent-explosion: true
-  # 允許的方塊破壞
-  allowed-break-blocks:
-    - "CHEST"
-    - "FURNACE"
-    - "CRAFTING_TABLE"
-  # 允許的方塊放置
-  allowed-place-blocks:
-    - "CHEST"
-    - "FURNACE"
-    - "CRAFTING_TABLE"
-    - "TORCH"
-
-# 經濟系統設置 (需要Vault)
-economy:
-  # 是否啟用經濟系統
-  enabled: false
-  # 創建木筏費用
-  create-cost: 100.0
-  # 重置木筏費用
-  reset-cost: 50.0
-  # 傳送費用
-  teleport-cost: 10.0
-  # 刪除退款比例 (0.0 - 1.0)
-  delete-refund: 0.5
-
-# 進階設置 (僅供進階用戶修改)
-advanced:
-  # 木筏生成算法
-  generation-algorithm: "SIMPLEX"
-  # 地形種子 (0 = 隨機)
-  terrain-seed: 0
-  # 是否啟用自定義生物群系
-  custom-biomes: false
-  # 木筏材料
-  raft-material: "OAK_PLANKS"
-  # 是否啟用自定義木筏形狀
-  custom-raft-shape: false
-
-# 插件集成
-integrations:
-  # WorldGuard 集成
-  worldguard:
-    enabled: false
-    auto-create-regions: true
-    region-prefix: "raft_"
-  # PlaceholderAPI 集成
-  placeholderapi:
-    enabled: false
-  # Vault 集成
-  vault:
-    enabled: false
-  # Multiverse-Core 集成
-  multiverse:
-    enabled: false
-
-# 備份設置
-backup:
-  # 是否啟用自動備份
-  enabled: false
-  # 備份間隔 (小時)
-  interval: 24
-  # 保留備份天數
-  keep-days: 7
-  # 備份路徑
-  path: "plugins/RaftGen/backups"
-
-
-# 版本信息 (請勿修改)
-version: 1.0.0
-config-version: 1
+  # 下載連結
+  download-url: "https://example.com/download"
+  # 通知權限組
+  notify-groups:
+    - "raftgen.admin"

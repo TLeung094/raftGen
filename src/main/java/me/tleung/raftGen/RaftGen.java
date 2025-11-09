@@ -15,6 +15,7 @@ import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public class RaftGen extends JavaPlugin implements Listener {
 
@@ -22,6 +23,7 @@ public class RaftGen extends JavaPlugin implements Listener {
     private RaftGenAPI api;
     private RaftManager raftManager;
     private MarineLifeManager marineLifeManager;
+    private SharkEventManager sharkEventManager;
 
     @Override
     public void onEnable() {
@@ -41,8 +43,9 @@ public class RaftGen extends JavaPlugin implements Listener {
             return;
         }
 
-        // 然后再创建 MarineLifeManager
+        // 然后再创建其他管理器
         this.marineLifeManager = new MarineLifeManager(this);
+        this.sharkEventManager = new SharkEventManager(this); // 新增鯊魚事件管理器
 
         // 先初始化 raftManager，再創建 API
         this.api = new RaftGenAPIImpl(this);
@@ -67,6 +70,13 @@ public class RaftGen extends JavaPlugin implements Listener {
             getLogger().warning("§c海洋生物系統未正常啟動!");
         }
 
+        // 检查鯊魚事件系統状态
+        if (sharkEventManager != null && sharkEventManager.isEnabled()) {
+            getLogger().info("§a鯊魚事件系統已加載!");
+        } else {
+            getLogger().warning("§c鯊魚事件系統未正常啟動!");
+        }
+
         getLogger().info("§aRaftGen API 已就緒，版本: " + getDescription().getVersion());
 
         // 延迟检查插件健康状态
@@ -87,6 +97,12 @@ public class RaftGen extends JavaPlugin implements Listener {
             getLogger().info("§a海洋生物系統已禁用");
         }
 
+        // 禁用鯊魚事件系統
+        if (sharkEventManager != null) {
+            sharkEventManager.setEnabled(false);
+            getLogger().info("§a鯊魚事件系統已禁用");
+        }
+
         instance = null;
         api = null;
         getLogger().info("§c木筏生成插件已停用!");
@@ -105,11 +121,18 @@ public class RaftGen extends JavaPlugin implements Listener {
         }
 
         getLogger().info("§aMarineLifeManager: " + (marineLifeManager != null ? "正常" : "异常"));
+        getLogger().info("§aSharkEventManager: " + (sharkEventManager != null ? "正常" : "异常"));
 
         if (marineLifeManager != null) {
             getLogger().info("§a海洋系统状态: " + (marineLifeManager.isEnabled() ? "已启用" : "未启用"));
             getLogger().info("§a海洋系统初始化: " + (marineLifeManager.isInitialized() ? "已初始化" : "未初始化"));
             getLogger().info("§a海洋生物数量: " + marineLifeManager.getActiveMarineLifeCount());
+        }
+
+        if (sharkEventManager != null) {
+            getLogger().info("§a鯊魚系統状态: " + (sharkEventManager.isEnabled() ? "已启用" : "未启用"));
+            getLogger().info("§a活躍鯊魚數量: " + sharkEventManager.getActiveSharkCount());
+            getLogger().info("§aMythicMobs集成: " + (sharkEventManager.isMythicMobsAvailable() ? "已连接" : "未连接"));
         }
 
         getLogger().info("§aAPI: " + (api != null ? "正常" : "异常"));
@@ -208,6 +231,9 @@ public class RaftGen extends JavaPlugin implements Listener {
                     break;
                 case "marine":
                     handleMarineCommand(sender, args);
+                    break;
+                case "shark": // 新增鯊魚命令
+                    handleSharkCommand(sender, args);
                     break;
                 case "health":
                     handleHealthCommand(sender);
@@ -352,8 +378,13 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
         sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
         sender.sendMessage("§a海洋生物: §e" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用" : "未啟用"));
+        sender.sendMessage("§a鯊魚事件: §e" + (sharkEventManager != null && sharkEventManager.isEnabled() ? "已啟用" : "未啟用"));
         if (marineLifeManager != null) {
             sender.sendMessage("§a海洋生物數量: §e" + marineLifeManager.getActiveMarineLifeCount());
+        }
+        if (sharkEventManager != null) {
+            sender.sendMessage("§a活躍鯊魚數量: §e" + sharkEventManager.getActiveSharkCount());
+            sender.sendMessage("§aMythicMobs集成: §e" + (sharkEventManager.isMythicMobsAvailable() ? "已连接" : "未连接"));
         }
     }
 
@@ -461,9 +492,14 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
         sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
         sender.sendMessage("§a海洋生物系統: §e" + (marineLifeManager != null && marineLifeManager.isEnabled() ? "已啟用" : "未啟用"));
+        sender.sendMessage("§a鯊魚事件系統: §e" + (sharkEventManager != null && sharkEventManager.isEnabled() ? "已啟用" : "未啟用"));
         if (marineLifeManager != null) {
             sender.sendMessage("§a海洋生物數量: §e" + marineLifeManager.getActiveMarineLifeCount());
             sender.sendMessage("§a海洋系統初始化: §e" + (marineLifeManager.isInitialized() ? "已初始化" : "未初始化"));
+        }
+        if (sharkEventManager != null) {
+            sender.sendMessage("§a活躍鯊魚數量: §e" + sharkEventManager.getActiveSharkCount());
+            sender.sendMessage("§aMythicMobs集成: §e" + (sharkEventManager.isMythicMobsAvailable() ? "已连接" : "未连接"));
         }
         sender.sendMessage("§a可用事件:");
         sender.sendMessage("  §7- RaftCreateEvent");
@@ -502,10 +538,16 @@ public class RaftGen extends JavaPlugin implements Listener {
             marineLifeManager.restart();
         }
 
+        // 重新啟動鯊魚事件系統
+        if (sharkEventManager != null) {
+            sharkEventManager.restart();
+        }
+
         sender.sendMessage("§a插件配置和數據已重新載入!");
         sender.sendMessage("§a木筏數量: §e" + raftManager.getRaftCount());
         sender.sendMessage("§a團隊數量: §e" + raftManager.getTeamManager().getTeamCount());
         sender.sendMessage("§a海洋生物系統: §e已重新載入");
+        sender.sendMessage("§a鯊魚事件系統: §e已重新載入");
 
         getLogger().info("插件配置和數據已重新載入");
     }
@@ -646,6 +688,134 @@ public class RaftGen extends JavaPlugin implements Listener {
         }
     }
 
+    /**
+     * 處理鯊魚事件命令
+     */
+    private void handleSharkCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("raftgen.admin")) {
+            sender.sendMessage("§c你沒有權限使用此指令!");
+            return;
+        }
+
+        if (args.length == 1) {
+            // 顯示鯊魚事件狀態
+            if (sharkEventManager != null) {
+                sender.sendMessage(sharkEventManager.getStatusInfo());
+            } else {
+                sender.sendMessage("§c鯊魚事件管理器未初始化!");
+            }
+            sender.sendMessage("§a用法:");
+            sender.sendMessage("§e/raft shark enable §7- 啟用鯊魚事件");
+            sender.sendMessage("§e/raft shark disable §7- 禁用鯊魚事件");
+            sender.sendMessage("§e/raft shark spawnall §7- 為所有木筏生成鯊魚");
+            sender.sendMessage("§e/raft shark removeall §7- 移除所有鯊魚");
+            sender.sendMessage("§e/raft shark restart §7- 重新啟動系統");
+            sender.sendMessage("§e/raft shark status §7- 顯示詳細狀態");
+            sender.sendMessage("§e/raft shark spawn <玩家> §7- 為指定玩家生成鯊魚");
+            sender.sendMessage("§e/raft shark debug §7- 顯示調試信息");
+            return;
+        }
+
+        String subCommand = args[1].toLowerCase();
+        switch (subCommand) {
+            case "enable":
+                if (sharkEventManager != null) {
+                    sharkEventManager.setEnabled(true);
+                    sender.sendMessage("§a鯊魚事件系統已啟用!");
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "disable":
+                if (sharkEventManager != null) {
+                    sharkEventManager.setEnabled(false);
+                    sender.sendMessage("§a鯊魚事件系統已禁用!");
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "spawnall":
+                if (sharkEventManager != null) {
+                    int spawned = 0;
+                    for (UUID playerId : raftManager.getAllRafts().keySet()) {
+                        if (raftManager.getTeamManager().isTeamLeader(playerId) ||
+                                !raftManager.getTeamManager().isInTeam(playerId)) {
+                            sharkEventManager.spawnSharkForRaft(playerId);
+                            spawned++;
+                        }
+                    }
+                    sender.sendMessage("§a已為 " + spawned + " 個木筏生成鯊魚!");
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "removeall":
+                if (sharkEventManager != null) {
+                    sharkEventManager.cleanupSharks();
+                    sender.sendMessage("§a已移除所有鯊魚!");
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "restart":
+                if (sharkEventManager != null) {
+                    sharkEventManager.restart();
+                    sender.sendMessage("§a鯊魚事件系統正在重新啟動...");
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "status":
+                if (sharkEventManager != null) {
+                    sender.sendMessage(sharkEventManager.getStatusInfo());
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "spawn":
+                if (args.length < 3) {
+                    sender.sendMessage("§c用法: /raft shark spawn <玩家名稱>");
+                    return;
+                }
+                if (sharkEventManager != null) {
+                    Player targetPlayer = Bukkit.getPlayer(args[2]);
+                    if (targetPlayer != null) {
+                        sharkEventManager.spawnSharkForRaft(targetPlayer.getUniqueId());
+                        sender.sendMessage("§a已為玩家 " + args[2] + " 生成鯊魚!");
+                    } else {
+                        sender.sendMessage("§c找不到玩家: " + args[2]);
+                    }
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            case "debug":
+                if (sharkEventManager != null) {
+                    sender.sendMessage("§6=== 鯊魚系統調試信息 ===");
+                    sender.sendMessage("§aMythicMobs可用: §e" + sharkEventManager.isMythicMobsAvailable());
+                    sender.sendMessage("§a系統啟用: §e" + sharkEventManager.isEnabled());
+                    sender.sendMessage("§a活躍鯊魚: §e" + sharkEventManager.getActiveSharkCount());
+
+                    // 測試 MythicMobs 集成
+                    if (sharkEventManager.isMythicMobsAvailable()) {
+                        sender.sendMessage("§aMythicMobs 集成正常");
+                        sender.sendMessage("§a目標生物: §enm_shark_great_white");
+                    } else {
+                        sender.sendMessage("§cMythicMobs 集成不可用");
+                    }
+
+                    // 显示状态信息
+                    sender.sendMessage(sharkEventManager.getStatusInfo());
+                } else {
+                    sender.sendMessage("§c鯊魚事件管理器未初始化!");
+                }
+                break;
+            default:
+                sender.sendMessage("§c未知的鯊魚指令!");
+                break;
+        }
+    }
+
     private void handleHealthCommand(CommandSender sender) {
         if (!sender.hasPermission("raftgen.admin")) {
             sender.sendMessage("§c你沒有權限使用此指令!");
@@ -684,6 +854,16 @@ public class RaftGen extends JavaPlugin implements Listener {
             }
         }
 
+        if (sharkEventManager == null) {
+            sender.sendMessage("§cSharkEventManager 為 null，嘗試重新初始化...");
+            this.sharkEventManager = new SharkEventManager(this);
+            if (sharkEventManager != null) {
+                sender.sendMessage("§aSharkEventManager 重新初始化成功");
+            } else {
+                sender.sendMessage("§cSharkEventManager 重新初始化失敗");
+            }
+        }
+
         if (raftManager != null && raftManager.getRaftWorld() == null) {
             sender.sendMessage("§c木筏世界為 null，嘗試重新初始化...");
             raftManager.initializeRaftWorld();
@@ -701,6 +881,16 @@ public class RaftGen extends JavaPlugin implements Listener {
                 sender.sendMessage("§a海洋生物系統啟用成功");
             } else {
                 sender.sendMessage("§c海洋生物系統啟用失敗");
+            }
+        }
+
+        if (sharkEventManager != null && !sharkEventManager.isEnabled()) {
+            sender.sendMessage("§c鯊魚事件系統未啟用，嘗試啟用...");
+            sharkEventManager.setEnabled(true);
+            if (sharkEventManager.isEnabled()) {
+                sender.sendMessage("§a鯊魚事件系統啟用成功");
+            } else {
+                sender.sendMessage("§c鯊魚事件系統啟用失敗");
             }
         }
 
@@ -728,6 +918,7 @@ public class RaftGen extends JavaPlugin implements Listener {
             player.sendMessage("§a/raft save §7- 手動保存數據");
             player.sendMessage("§a/raft reload §7- 重新載入配置和數據");
             player.sendMessage("§b/raft marine §7- 海洋生物管理");
+            player.sendMessage("§b/raft shark §7- 鯊魚事件管理"); // 新增鯊魚命令幫助
             player.sendMessage("§a/raft health §7- 插件健康檢查");
             player.sendMessage("§a/raft diagnose §7- 插件診斷與修復");
         }
@@ -761,6 +952,7 @@ public class RaftGen extends JavaPlugin implements Listener {
         sender.sendMessage("§a/raft save §7- 手動保存數據");
         sender.sendMessage("§a/raft reload §7- 重新載入配置和數據");
         sender.sendMessage("§a/raft marine §7- 海洋生物管理");
+        sender.sendMessage("§a/raft shark §7- 鯊魚事件管理"); // 新增鯊魚命令幫助
         sender.sendMessage("§a/raft health §7- 插件健康檢查");
         sender.sendMessage("§a/raft diagnose §7- 插件診斷與修復");
     }
@@ -783,6 +975,10 @@ public class RaftGen extends JavaPlugin implements Listener {
 
     public MarineLifeManager getMarineLifeManager() {
         return marineLifeManager;
+    }
+
+    public SharkEventManager getSharkEventManager() {
+        return sharkEventManager;
     }
 
     public String getPluginStatus() {
@@ -808,6 +1004,14 @@ public class RaftGen extends JavaPlugin implements Listener {
             status.append("§a活躍海洋生物: §e").append(marineLifeManager.getActiveMarineLifeCount()).append("\n");
             status.append("§a海洋系統狀態: §e").append(marineLifeManager.isEnabled() ? "已啟用" : "已禁用").append("\n");
             status.append("§a海洋系統初始化: §e").append(marineLifeManager.isInitialized() ? "已初始化" : "未初始化").append("\n");
+        }
+
+        // 添加鯊魚事件狀態
+        status.append("§a鯊魚事件系統: §e").append(getConfig().getBoolean("shark-event.enabled", true) ? "已啟用" : "已禁用").append("\n");
+        if (sharkEventManager != null) {
+            status.append("§a活躍鯊魚數量: §e").append(sharkEventManager.getActiveSharkCount()).append("\n");
+            status.append("§a鯊魚系統狀態: §e").append(sharkEventManager.isEnabled() ? "已啟用" : "已禁用").append("\n");
+            status.append("§aMythicMobs集成: §e").append(sharkEventManager.isMythicMobsAvailable() ? "已连接" : "未连接").append("\n");
         }
 
         // 添加數據持久化狀態
@@ -869,7 +1073,8 @@ public class RaftGen extends JavaPlugin implements Listener {
         return instance != null &&
                 raftManager != null &&
                 api != null &&
-                marineLifeManager != null;
+                marineLifeManager != null &&
+                sharkEventManager != null;
     }
 
     /**
@@ -882,6 +1087,7 @@ public class RaftGen extends JavaPlugin implements Listener {
         diag.append("§aAPI狀態: §e").append(api != null ? "正常" : "異常").append("\n");
         diag.append("§a管理器狀態: §e").append(raftManager != null ? "正常" : "異常").append("\n");
         diag.append("§a海洋生物管理器: §e").append(marineLifeManager != null ? "正常" : "異常").append("\n");
+        diag.append("§a鯊魚事件管理器: §e").append(sharkEventManager != null ? "正常" : "異常").append("\n");
 
         if (raftManager != null) {
             diag.append("§a木筏世界: §e").append(raftManager.getRaftWorld() != null ? "已載入" : "未載入").append("\n");
@@ -895,6 +1101,12 @@ public class RaftGen extends JavaPlugin implements Listener {
             diag.append("§a海洋生物數量: §e").append(marineLifeManager.getActiveMarineLifeCount()).append("\n");
         }
 
+        if (sharkEventManager != null) {
+            diag.append("§a鯊魚系統狀態: §e").append(sharkEventManager.isEnabled() ? "已啟用" : "已禁用").append("\n");
+            diag.append("§a活躍鯊魚數量: §e").append(sharkEventManager.getActiveSharkCount()).append("\n");
+            diag.append("§aMythicMobs集成: §e").append(sharkEventManager.isMythicMobsAvailable() ? "已连接" : "未连接").append("\n");
+        }
+
         diag.append("§a調度器狀態: §e").append(Bukkit.getScheduler().isCurrentlyRunning(raftManager != null ? raftManager.hashCode() : 0) ? "運行中" : "停止").append("\n");
 
         // 添加修復建議
@@ -905,6 +1117,9 @@ public class RaftGen extends JavaPlugin implements Listener {
         if (marineLifeManager == null) {
             diag.append("§c- MarineLifeManager 為 null，使用 §e/raft diagnose §c進行修復\n");
         }
+        if (sharkEventManager == null) {
+            diag.append("§c- SharkEventManager 為 null，使用 §e/raft diagnose §c進行修復\n");
+        }
         if (raftManager != null && raftManager.getRaftWorld() == null) {
             diag.append("§c- 木筏世界未載入，使用 §e/raft diagnose §c進行修復\n");
         }
@@ -913,6 +1128,12 @@ public class RaftGen extends JavaPlugin implements Listener {
         }
         if (marineLifeManager != null && !marineLifeManager.isInitialized()) {
             diag.append("§c- 海洋生物系統未初始化，使用 §e/raft marine reinit §c重新初始化\n");
+        }
+        if (sharkEventManager != null && !sharkEventManager.isEnabled()) {
+            diag.append("§c- 鯊魚事件系統未啟用，使用 §e/raft shark enable §c啟用\n");
+        }
+        if (sharkEventManager != null && !sharkEventManager.isMythicMobsAvailable()) {
+            diag.append("§c- MythicMobs 集成失败，检查 MythicMobs 插件和生物配置\n");
         }
 
         return diag.toString();
